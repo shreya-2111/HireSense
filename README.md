@@ -51,19 +51,6 @@ HireSense/
     └── vite.config.js
 ```
 
-## Quick Start (Frontend)
-
-```bash
-# Navigate to the frontend directory
-cd Frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
 ## Core Workflows
 
 1. **Recruiter Authentication**: Secure login and demo recruiter access.
