@@ -44,7 +44,7 @@ export function TableRow({ children, className, isClickable = false, ...props })
 
 export function TableHead({ children, className, ...props }) {
   return (
-    <th className={cn("px-4 py-3 text-left font-semibold text-slate-600 tracking-wider whitespace-nowrap", className)} {...props}>
+    <th className={cn("px-3 py-2.5 text-left font-semibold text-slate-600 tracking-wider whitespace-nowrap text-[11px] sm:text-xs", className)} {...props}>
       {children}
     </th>
   );
@@ -52,7 +52,7 @@ export function TableHead({ children, className, ...props }) {
 
 export function TableCell({ children, className, ...props }) {
   return (
-    <td className={cn("px-4 py-3.5 text-slate-700 whitespace-nowrap align-middle", className)} {...props}>
+    <td className={cn("px-3 py-2.5 text-slate-700 whitespace-nowrap align-middle text-xs sm:text-sm", className)} {...props}>
       {children}
     </td>
   );

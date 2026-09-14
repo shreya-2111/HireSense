@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users } from 'lucide-react';
+import { MapPin, Users, Briefcase, IndianRupee } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { formatIndianDate, formatSalary } from '../../utils/formatters';
 
 export function JobCard({ job, onSelect }) {
   const navigate = useNavigate();
@@ -28,9 +29,14 @@ export function JobCard({ job, onSelect }) {
       <div className="p-5 space-y-3.5">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
-              {job.department}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
+                {job.department}
+              </span>
+              <span className="text-[10px] font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-100">
+                {job.type || 'Remote'}
+              </span>
+            </div>
             <h3 className="text-base font-bold text-slate-900 mt-0.5 hover:text-blue-600 transition-colors cursor-pointer" onClick={() => onSelect(job)}>
               {job.title}
             </h3>
@@ -47,6 +53,12 @@ export function JobCard({ job, onSelect }) {
             <MapPin className="w-3.5 h-3.5 text-slate-400" />
             <span>{job.location}</span>
           </div>
+          {job.salaryRange && (
+            <div className="flex items-center gap-2 font-medium text-slate-700">
+              <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{formatSalary(job.salaryRange)}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Users className="w-3.5 h-3.5 text-slate-400" />
             <span><strong className="text-slate-800 font-semibold">{job.candidatesCount}</strong> candidates ({job.shortlistedCount} shortlisted)</span>
@@ -69,7 +81,7 @@ export function JobCard({ job, onSelect }) {
       </div>
 
       <div className="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs">
-        <span className="text-slate-400">Created {job.createdDate}</span>
+        <span className="text-slate-400">Created {formatIndianDate(job.createdDate)}</span>
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => onSelect(job)}>
             Details

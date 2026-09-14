@@ -21,3 +21,21 @@ yarn-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Python & Backend
+.env
+*.env
+backend/.env
+backend/.pytest_cache/
+backend/uploads/
+uploads/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.pytest_cache/
+

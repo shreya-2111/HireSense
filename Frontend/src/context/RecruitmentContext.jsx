@@ -1,58 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_JOBS } from '../data/mockJobs';
-import { INITIAL_CANDIDATES } from '../data/mockCandidates';
-import { INITIAL_INTERVIEWS } from '../data/mockInterviews';
+import { authService } from '../services/authService';
+import { jobsService } from '../services/jobsService';
+import { candidateService } from '../services/candidateService';
+import { interviewService } from '../services/interviewService';
+import { analyticsService } from '../services/analyticsService';
 
 const RecruitmentContext = createContext(null);
 
 export function RecruitmentProvider({ children }) {
   // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const token = localStorage.getItem('hiresense_token') || sessionStorage.getItem('hiresense_token');
+    return Boolean(token);
+  });
+
   const [user, setUser] = useState(() => {
+    const token = localStorage.getItem('hiresense_token') || sessionStorage.getItem('hiresense_token');
+    if (!token) return null;
     const saved = localStorage.getItem('hiresense_user');
     return saved ? JSON.parse(saved) : {
-      name: "Sarah Lin",
-      email: "sarah.lin@hiresense.internal",
-      role: "Senior Technical Recruiter",
-      company: "Acme Cloud Technologies",
+      id: 1,
+      name: "Shreya Raval",
+      email: "shreyaraval482@gmail.com",
+      role: "Talent Acquisition Lead",
+      avatar: "SR",
+      company: "HireSense AI",
     };
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Clear legacy localStorage auth flag if present so users start at the login page
-    try {
-      localStorage.removeItem('hiresense_auth');
-    } catch (e) {
-      // ignore
-    }
-    const saved = sessionStorage.getItem('hiresense_auth');
-    return saved !== null ? JSON.parse(saved) : false;
-  });
-
-  // Load from localStorage or fallback to mock data
-  const [jobs, setJobs] = useState(() => {
-    const saved = localStorage.getItem('hiresense_jobs');
-    return saved ? JSON.parse(saved) : INITIAL_JOBS;
-  });
-
-  const [candidates, setCandidates] = useState(() => {
-    const saved = localStorage.getItem('hiresense_candidates');
-    return saved ? JSON.parse(saved) : INITIAL_CANDIDATES;
-  });
-
-  const [interviews, setInterviews] = useState(() => {
-    const saved = localStorage.getItem('hiresense_interviews');
-    return saved ? JSON.parse(saved) : INITIAL_INTERVIEWS;
-  });
+  const [jobs, setJobs] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [interviews, setInterviews] = useState([]);
 
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('hiresense_settings');
     return saved ? JSON.parse(saved) : {
-      recruiterName: "Sarah Lin",
-      recruiterTitle: "Senior Technical Recruiter",
-      recruiterEmail: "sarah.lin@hiresense.internal",
-      companyName: "Acme Cloud Technologies",
+      recruiterName: "Shreya Raval",
+      recruiterTitle: "Talent Acquisition Lead",
+      recruiterEmail: "shreyaraval482@gmail.com",
+      companyName: "HireSense AI",
       department: "Talent Acquisition",
-      timezone: "America/New_York (EST)",
+      timezone: "Asia/Kolkata (IST, UTC+5:30)",
       emailNewApplicants: true,
       highMatchThreshold: 85,
       dailyInterviewDigest: true,
@@ -62,27 +50,46 @@ export function RecruitmentProvider({ children }) {
   });
 
   const [toasts, setToasts] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('hiresense_user', JSON.stringify(user));
-  }, [user]);
+  // Initial Fetch from Backend only when Authenticated
+  const refreshData = async () => {
+    try {
+      setIsLoading(true);
+      const [fetchedJobs, fetchedCandidates, fetchedInterviews] = await Promise.all([
+        jobsService.getJobs(),
+        candidateService.getCandidates(),
+        interviewService.getInterviews(),
+      ]);
+      setJobs(fetchedJobs || []);
+      setCandidates(fetchedCandidates || []);
+      setInterviews(fetchedInterviews || []);
+
+      // Sync local storage with true backend data
+      localStorage.setItem('hiresense_jobs', JSON.stringify(fetchedJobs || []));
+      localStorage.setItem('hiresense_candidates', JSON.stringify(fetchedCandidates || []));
+      localStorage.setItem('hiresense_interviews', JSON.stringify(fetchedInterviews || []));
+    } catch (err) {
+      console.warn('Initial data load from backend error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    sessionStorage.setItem('hiresense_auth', JSON.stringify(isAuthenticated));
+    if (isAuthenticated) {
+      refreshData();
+    }
   }, [isAuthenticated]);
 
+  // Persist settings & user
   useEffect(() => {
-    localStorage.setItem('hiresense_jobs', JSON.stringify(jobs));
-  }, [jobs]);
-
-  useEffect(() => {
-    localStorage.setItem('hiresense_candidates', JSON.stringify(candidates));
-  }, [candidates]);
-
-  useEffect(() => {
-    localStorage.setItem('hiresense_interviews', JSON.stringify(interviews));
-  }, [interviews]);
+    if (user) {
+      localStorage.setItem('hiresense_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('hiresense_user');
+    }
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem('hiresense_settings', JSON.stringify(settings));
@@ -102,27 +109,33 @@ export function RecruitmentProvider({ children }) {
   };
 
   // Auth Actions
-  const login = (email, password) => {
+  const login = async (email, password) => {
+    const res = await authService.login(email, password);
     const loggedUser = {
-      name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      email: email,
-      role: "Senior Technical Recruiter",
-      company: settings.companyName || "Acme Cloud Technologies",
+      id: res.user?.id || 1,
+      name: res.user?.name || "Shreya Raval",
+      email: res.user?.email || email,
+      role: res.user?.role || "Talent Acquisition Lead",
+      company: settings.companyName || "HireSense AI",
     };
     setUser(loggedUser);
+    localStorage.setItem('hiresense_user', JSON.stringify(loggedUser));
     setIsAuthenticated(true);
     addToast(`Welcome back, ${loggedUser.name}!`);
     return true;
   };
 
-  const register = (userData) => {
+  const register = async (userData) => {
+    const res = await authService.register(userData);
     const newUser = {
-      name: userData.name,
-      email: userData.email,
-      role: userData.role || "Technical Recruiter",
-      company: userData.company || "Enterprise Co",
+      id: res.user?.id || 1,
+      name: res.user?.name || userData.name,
+      email: res.user?.email || userData.email,
+      role: res.user?.role || userData.role || "Talent Acquisition Lead",
+      company: userData.company || "HireSense AI",
     };
     setUser(newUser);
+    localStorage.setItem('hiresense_user', JSON.stringify(newUser));
     setSettings((prev) => ({
       ...prev,
       recruiterName: newUser.name,
@@ -136,27 +149,36 @@ export function RecruitmentProvider({ children }) {
   };
 
   const logout = () => {
+    authService.logout();
+    localStorage.removeItem('hiresense_user');
+    localStorage.removeItem('hiresense_token');
+    sessionStorage.removeItem('hiresense_token');
+    setUser(null);
     setIsAuthenticated(false);
     addToast("You have been signed out.", "info");
   };
 
   // Job Actions
-  const addJob = (newJobData) => {
-    const newJob = {
-      id: `job-${Date.now()}`,
-      createdDate: new Date().toISOString().split('T')[0],
-      candidatesCount: 0,
-      shortlistedCount: 0,
-      status: 'Active',
-      ...newJobData,
-    };
-    setJobs((prev) => [newJob, ...prev]);
-    addToast(`Job opening "${newJob.title}" created successfully!`);
-    return newJob;
+  const addJob = async (newJobData) => {
+    try {
+      const created = await jobsService.createJob(newJobData);
+      setJobs((prev) => [created, ...prev]);
+      addToast(`Job opening "${created.title}" created successfully!`);
+      return created;
+    } catch (err) {
+      addToast(err.message || "Failed to create job", "warning");
+      throw err;
+    }
   };
 
-  const updateJobStatus = (jobId, newStatus) => {
+  const updateJobStatus = async (jobId, newStatus) => {
     let jobTitle = "Job";
+    try {
+      await jobsService.updateJobStatus(jobId, newStatus);
+    } catch (e) {
+      console.warn('Backend updateJobStatus fallback:', e.message);
+    }
+
     setJobs((prev) =>
       prev.map((job) => {
         if (job.id === jobId) {
@@ -177,12 +199,18 @@ export function RecruitmentProvider({ children }) {
   };
 
   // Candidate Actions
-  const updateCandidateStatus = (candidateId, newStatus) => {
+  const updateCandidateStatus = async (candidateId, newStatus) => {
+    const candidate = candidates.find((c) => c.id === candidateId);
+    try {
+      await candidateService.updateCandidateStatus(candidateId, newStatus, candidate?.applicationId);
+    } catch (e) {
+      console.warn('Backend updateCandidateStatus fallback:', e.message);
+    }
+
     setCandidates((prev) =>
       prev.map((c) => (c.id === candidateId ? { ...c, status: newStatus } : c))
     );
     
-    const candidate = candidates.find((c) => c.id === candidateId);
     const candidateName = candidate ? candidate.name : "Candidate";
     
     if (newStatus === "Shortlisted") {
@@ -196,49 +224,50 @@ export function RecruitmentProvider({ children }) {
     }
   };
 
-  const addCandidate = (candidateData) => {
-    const newCand = {
-      id: `cand-${Date.now()}`,
-      appliedDate: new Date().toISOString().split('T')[0],
-      status: 'Under Review',
-      avatar: candidateData.name
-        ? candidateData.name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2)
-        : 'NC',
-      ...candidateData,
-    };
-
-    setCandidates((prev) => [newCand, ...prev]);
-    if (newCand.appliedJobId) {
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.id === newCand.appliedJobId
-            ? { ...j, candidatesCount: (j.candidatesCount || 0) + 1 }
-            : j
-        )
-      );
+  const addCandidate = async (candidateData) => {
+    try {
+      const created = await candidateService.createCandidate(candidateData);
+      setCandidates((prev) => [created, ...prev]);
+      if (created.appliedJobId) {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === created.appliedJobId
+              ? { ...j, candidatesCount: (j.candidatesCount || 0) + 1 }
+              : j
+          )
+        );
+      }
+      addToast(`Candidate ${created.name} added to pipeline!`);
+      return created;
+    } catch (err) {
+      addToast(err.message || "Failed to create candidate", "warning");
+      throw err;
     }
-    addToast(`Candidate ${newCand.name} added to pipeline!`);
-    return newCand;
   };
 
   // Interview Actions
-  const scheduleInterview = (interviewData) => {
-    const newInt = {
-      id: `int-${Date.now()}`,
-      status: 'Scheduled',
-      meetingLink: `https://meet.hiresense.internal/int-${Date.now()}`,
-      ...interviewData,
-    };
-    setInterviews((prev) => [newInt, ...prev]);
-    
-    if (newInt.candidateId) {
-      updateCandidateStatus(newInt.candidateId, "Interview Scheduled");
+  const scheduleInterview = async (interviewData) => {
+    try {
+      const created = await interviewService.scheduleInterview(interviewData);
+      setInterviews((prev) => [created, ...prev]);
+      if (created.candidateId) {
+        updateCandidateStatus(created.candidateId, "Interview Scheduled");
+      }
+      addToast(`Interview scheduled for ${created.candidateName}`);
+      return created;
+    } catch (err) {
+      addToast(err.message || "Failed to schedule interview", "warning");
+      throw err;
     }
-    addToast(`Interview scheduled for ${newInt.candidateName}`);
-    return newInt;
   };
 
-  const updateInterviewStatus = (interviewId, newStatus) => {
+  const updateInterviewStatus = async (interviewId, newStatus) => {
+    try {
+      await interviewService.updateInterviewStatus(interviewId, newStatus);
+    } catch (e) {
+      console.warn('Backend updateInterviewStatus fallback:', e.message);
+    }
+
     let candName = "Candidate";
     setInterviews((prev) =>
       prev.map((i) => {
@@ -261,9 +290,17 @@ export function RecruitmentProvider({ children }) {
     }
   };
 
-  const attachCandidateToJob = (candidateId, targetJobId, targetJobTitle) => {
+  const attachCandidateToJob = async (candidateId, targetJobId, targetJobTitle) => {
     let candidateName = "Candidate";
     let oldJobId = null;
+
+    try {
+      if (typeof candidateId === 'number' && typeof targetJobId === 'number') {
+        await candidateService.attachCandidateToJob(candidateId, targetJobId);
+      }
+    } catch (e) {
+      console.warn('Backend attachCandidateToJob fallback:', e.message);
+    }
 
     setCandidates((prev) =>
       prev.map((c) => {
@@ -295,7 +332,13 @@ export function RecruitmentProvider({ children }) {
     addToast(`${candidateName} attached to ${targetJobTitle} pipeline!`);
   };
 
-  const updateInterviewNotes = (interviewId, notes) => {
+  const updateInterviewNotes = async (interviewId, notes) => {
+    try {
+      await interviewService.updateInterviewNotes(interviewId, notes);
+    } catch (e) {
+      console.warn('Backend updateInterviewNotes fallback:', e.message);
+    }
+
     setInterviews((prev) =>
       prev.map((i) => (i.id === interviewId ? { ...i, notes } : i))
     );
@@ -307,17 +350,34 @@ export function RecruitmentProvider({ children }) {
     addToast("Settings preferences saved successfully!");
   };
 
-  // Aggregated Stats
+  const isInterviewToday = (dateStr) => {
+    if (!dateStr) return false;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const isoToday = `${y}-${m}-${d}`;
+    const dateNum = now.getDate();
+    const monthName = now.toLocaleString('en-US', { month: 'short' });
+    const fullDateStr = `${dateNum} ${monthName} ${y}`;
+    
+    return dateStr.includes(isoToday) || dateStr.includes(fullDateStr) || (dateStr.includes(`${dateNum}`) && dateStr.includes(monthName));
+  };
+
+  // Aggregated Stats directly from state
   const activeJobsCount = jobs.filter((j) => j.status === 'Active').length;
   const totalCandidatesCount = candidates.length;
-  const reviewedCandidatesCount = candidates.filter((c) => c.status !== 'Under Review').length;
+  const reviewedCandidatesCount = candidates.filter((c) => c.status !== 'Under Review' && c.status !== 'Applied').length;
   const scheduledInterviewsCount = interviews.filter((i) => i.status === 'Scheduled').length;
+  const todayInterviewsCount = interviews.filter((i) => i.status === 'Scheduled' && isInterviewToday(i.date)).length;
 
   return (
     <RecruitmentContext.Provider
       value={{
         user,
         isAuthenticated,
+        isLoading,
+        refreshData,
         login,
         register,
         logout,
@@ -330,6 +390,7 @@ export function RecruitmentProvider({ children }) {
         totalCandidatesCount,
         reviewedCandidatesCount,
         scheduledInterviewsCount,
+        todayInterviewsCount,
         addJob,
         updateJobStatus,
         updateCandidateStatus,

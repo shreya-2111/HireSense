@@ -114,8 +114,7 @@ export function CandidateTable({ candidates = [] }) {
                 Match Score {renderSortIndicator('matchScore')}
               </button>
             </TableHead>
-            <TableHead>Matched Skills</TableHead>
-            <TableHead>Missing Skills</TableHead>
+            <TableHead>Verified Skills</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Action</TableHead>
           </tr>
@@ -129,64 +128,52 @@ export function CandidateTable({ candidates = [] }) {
             >
               {/* Candidate Info */}
               <TableCell>
-                <div className="flex items-center gap-3">
-                  <Avatar initials={cand.avatar} size="sm" />
-                  <div>
-                    <p className="font-semibold text-slate-900 hover:text-blue-600 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <Avatar initials={cand.avatar} size="xs" />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 hover:text-blue-600 transition-colors truncate">
                       {cand.name}
                     </p>
-                    <p className="text-xs text-slate-400">{cand.email}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{cand.email}</p>
                   </div>
                 </div>
               </TableCell>
 
               {/* Applied For */}
               <TableCell>
-                <span className="text-xs font-medium text-slate-800 bg-slate-100 px-2 py-1 rounded-md">
+                <span className="text-xs font-medium text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md truncate block max-w-[180px]">
                   {cand.appliedRole}
                 </span>
               </TableCell>
 
               {/* Experience */}
               <TableCell>
-                <span className="text-xs text-slate-600 font-medium">
-                  {cand.experienceYears} yrs
+                <span className="text-xs text-slate-600 font-medium whitespace-nowrap">
+                  {cand.experienceYears || 0} yrs
                 </span>
               </TableCell>
 
               {/* Match Score */}
               <TableCell>
-                <MatchScoreBadge score={cand.matchScore} />
+                <MatchScoreBadge score={cand.matchScore} size="sm" />
               </TableCell>
 
-              {/* Matched Skills */}
+              {/* Verified Skills */}
               <TableCell>
-                <div className="flex flex-wrap gap-1 max-w-[240px]">
-                  {cand.matchedSkills.slice(0, 3).map((skill) => (
-                    <SkillBadge key={skill} name={skill} type="matched" size="sm" />
-                  ))}
-                  {cand.matchedSkills.length > 3 && (
-                    <span className="text-[10px] text-slate-500 font-medium px-1.5 py-0.5 bg-slate-100 rounded">
-                      +{cand.matchedSkills.length - 3}
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-
-              {/* Missing Skills */}
-              <TableCell>
-                <div className="flex flex-wrap gap-1 max-w-[200px]">
-                  {cand.missingSkills && cand.missingSkills.length > 0 ? (
-                    cand.missingSkills.slice(0, 2).map((skill) => (
-                      <SkillBadge key={skill} name={skill} type="missing" size="sm" />
-                    ))
+                <div className="flex flex-wrap items-center gap-1 max-w-[220px]">
+                  {cand.matchedSkills && cand.matchedSkills.length > 0 ? (
+                    <>
+                      {cand.matchedSkills.slice(0, 2).map((skill) => (
+                        <SkillBadge key={skill} name={skill} type="matched" size="sm" />
+                      ))}
+                      {cand.matchedSkills.length > 2 && (
+                        <span className="text-[10px] text-slate-500 font-semibold px-1.5 py-0.2 bg-slate-100 rounded">
+                          +{cand.matchedSkills.length - 2}
+                        </span>
+                      )}
+                    </>
                   ) : (
-                    <span className="text-xs text-slate-400 italic">None identified</span>
-                  )}
-                  {cand.missingSkills && cand.missingSkills.length > 2 && (
-                    <span className="text-[10px] text-slate-500 font-medium px-1.5 py-0.5 bg-slate-100 rounded">
-                      +{cand.missingSkills.length - 2}
-                    </span>
+                    <span className="text-xs text-slate-400 italic">No skills listed</span>
                   )}
                 </div>
               </TableCell>
@@ -201,14 +188,14 @@ export function CandidateTable({ candidates = [] }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs px-2 py-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/candidates/${cand.id}`);
                   }}
                 >
                   <span>View</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
                 </Button>
               </TableCell>
             </TableRow>

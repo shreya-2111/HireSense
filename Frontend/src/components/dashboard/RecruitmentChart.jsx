@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -9,20 +9,21 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
-import { MOCK_ANALYTICS } from '../../data/mockAnalytics';
+import { useRecruitment } from '../../context/RecruitmentContext';
 
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
+    const year = payload[0]?.payload?.year || new Date().getFullYear();
     return (
       <div className="bg-white p-3 rounded-lg shadow-md border border-slate-200 text-xs space-y-1">
-        <p className="font-semibold text-slate-800">{label} 2025</p>
+        <p className="font-semibold text-slate-800">{label} {year}</p>
         <p className="text-blue-600 flex items-center justify-between gap-4">
           <span>Applications:</span>
           <span className="font-bold">{payload[0].value}</span>
         </p>
         <p className="text-emerald-600 flex items-center justify-between gap-4">
           <span>Reviewed:</span>
-          <span className="font-bold">{payload[1].value}</span>
+          <span className="font-bold">{payload[1]?.value ?? 0}</span>
         </p>
       </div>
     );
@@ -31,7 +32,52 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export function RecruitmentChart() {
-  const data = MOCK_ANALYTICS.monthlyTrend;
+  const { candidates } = useRecruitment();
+
+  const data = useMemo(() => {
+    const now = new Date();
+    const months = [];
+    
+    // Last 6 calendar months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        month: d.toLocaleString('default', { month: 'short' }),
+        year: d.getFullYear(),
+        applications: 0,
+        reviewed: 0,
+      });
+    }
+
+    if (Array.isArray(candidates) && candidates.length > 0) {
+      candidates.forEach((cand) => {
+        const rawDate = cand.appliedDate || cand.created_at;
+        let d = rawDate ? new Date(rawDate) : now;
+        if (isNaN(d.getTime())) d = now;
+
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        let targetMonth = months.find((m) => m.key === key);
+
+        // If candidate date is prior to the 6-month window or recent, map to the closest window
+        if (!targetMonth) {
+          targetMonth = months[months.length - 1]; // current month
+        }
+
+        targetMonth.applications += 1;
+
+        const isScreened =
+          (cand.matchScore && cand.matchScore > 0) ||
+          (cand.status && cand.status !== 'Applied' && cand.status !== 'Under Review');
+
+        if (isScreened) {
+          targetMonth.reviewed += 1;
+        }
+      });
+    }
+
+    return months;
+  }, [candidates]);
 
   return (
     <div className="w-full h-64">
@@ -55,6 +101,7 @@ export function RecruitmentChart() {
             tick={{ fill: '#64748b', fontSize: 12 }}
           />
           <YAxis
+            allowDecimals={false}
             axisLine={false}
             tickLine={false}
             tick={{ fill: '#64748b', fontSize: 12 }}

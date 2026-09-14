@@ -1,0 +1,369 @@
+================================================================================
+          HIRESENSE: RECRUITMENT INTELLIGENCE PLATFORM
+     COMPLETE PROJECT FLOW, ARCHITECTURE, FOLDER/FILE BREAKDOWN & INTERVIEW GUIDE
+================================================================================
+
+TABLE OF CONTENTS:
+1. EXECUTIVE SUMMARY & HIGH-LEVEL ELEVATOR PITCH
+2. FULL ARCHITECTURE & END-TO-END DATA FLOW
+3. COMPLETE FOLDER & FILE BREAKDOWN (WHY & HOW EACH FILE WORKS)
+   - 3.1 Backend Architecture (FastAPI + SQLAlchemy + Python)
+   - 3.2 Frontend Architecture (React + Vite + Tailwind CSS)
+   - 3.3 Root & Configuration Files
+4. CORE TECHNOLOGIES & LIBRARIES: WHICH WE USE FOR WHAT AND WHY
+5. DETAILED ALGORITHMIC & TECHNICAL WORKFLOWS
+   - 5.1 Resume Extraction Pipeline (PyPDF2 + pdfplumber + OCR Tesseract)
+   - 5.2 Algorithmic Candidate-Job Scoring Engine
+   - 5.3 Google Gemini AI Integration & Intelligent Fallback System
+   - 5.4 Authentication & JWT Security Workflow
+6. KEY INTERVIEW QUESTIONS & ANSWERS (DESIGNED FOR YOUR INTERVIEW)
+
+================================================================================
+1. EXECUTIVE SUMMARY & HIGH-LEVEL ELEVATOR PITCH
+================================================================================
+HireSense is an enterprise-grade AI-assisted Recruitment and Candidate Screening 
+Platform. It empowers talent acquisition teams and recruiters to:
+- Create, manage, and publish job postings with structured skill requirements.
+- Ingest and parse resumes in PDF, DOCX, TXT, or scanned image formats via 
+  a hybrid text-extraction + OCR pipeline.
+- Automatically calculate multi-factor Match Scores between candidate resumes 
+  and job descriptions (Skill Match + Experience Match + Domain Weighting).
+- Generate intelligent, role-tailored technical & behavioral interview questions 
+  using Google Gemini AI (with a zero-downtime deterministic fallback engine).
+- Schedule candidate interviews, manage pipeline stages (Applied -> Screened -> 
+  Shortlisted -> Interview -> Hired/Rejected), and track recruitment metrics with 
+  live dynamic analytics and CSV reporting.
+
+================================================================================
+2. FULL ARCHITECTURE & END-TO-END DATA FLOW
+================================================================================
+
+[User / Recruiter Browser]
+           │
+           ▼  (HTTP / REST / JSON & Multipart-Form-Data)
+[React 18 + Vite Single Page Application (Port 5173)]
+   ├── State Management: Centralized Context (`RecruitmentContext.jsx`)
+   ├── API Client Layer: Axios / Fetch wrapper (`apiClient.js`)
+   ├── UI Components: Tailwind CSS + Lucide Icons + Recharts
+           │
+           ▼  (REST API calls with JWT Bearer Token Header)
+[FastAPI Backend Application (Port 8000)]
+   ├── CORS Middleware & Security Layer (`app/core/security.py`)
+   ├── API Routers (`app/routers/`): Auth, Jobs, Candidates, Resumes, Interviews, Analytics
+   ├── Business Logic Services (`app/services/`)
+   │      ├── Resume Ingestion & OCR (`file_parser.py` + `resume_service.py`)
+   │      ├── Matching & Scoring Engine (`scoring.py` + `matching_service.py`)
+   │      └── AI Question Studio (`gemini_service.py` / `llm_service.py`)
+   ├── Database Layer (SQLAlchemy ORM + MySQL / SQLite fallback)
+   └── External Services: Google Gemini API (LLM inference)
+
+--------------------------------------------------------------------------------
+END-TO-END USER JOURNEYS (HOW THE APP WORKS IN PRODUCTION):
+--------------------------------------------------------------------------------
+Journey 1: Recruiter Registration & Authentication
+1. Recruiter registers on `/register` or logs in on `/login`.
+2. Backend verifies bcrypt password hash and generates a signed JWT Access Token.
+3. Frontend stores JWT in localStorage/sessionStorage and initializes `RecruitmentContext`.
+4. Global layout renders with authenticated navigation, personalized recruiter profile, and custom HireSense branding.
+
+Journey 2: Job Creation
+1. Recruiter navigates to `/jobs/create` and fills title, department, experience range, salary, and required skills (e.g. React, Node.js, Docker).
+2. Request hits `POST /api/v1/jobs`.
+3. SQLAlchemy stores Job in `jobs` table and associates normalized skills in `job_skills`.
+4. The job is immediately available in the dashboard and candidate matching dropdowns.
+
+Journey 3: Resume Screening & AI Analysis
+1. Recruiter goes to `/resume-analyzer` or clicks "Screen Resume" on a candidate.
+2. Recruiter uploads a resume (PDF/TXT) and selects the target Job Opening.
+3. Frontend sends `multipart/form-data` to `POST /api/v1/analyze-resume`.
+4. `file_parser.py` executes:
+   - Level 1: Native text extraction using `pdfplumber` and `PyPDF2`.
+   - Level 2 (if native text is empty/scanned): Rasterizes PDF pages into images via `pdf2image` and runs OCR via `pytesseract`.
+5. `scoring.py` evaluates candidate skills against job requirements:
+   - Matches mandatory and bonus skills.
+   - Calculates Experience Fit (years vs required range).
+   - Generates overall percentage Match Score (0 - 100%).
+6. `gemini_service.py` sends the resume context + job requirements to Google Gemini:
+   - Generates a tailored candidate summary, identified strengths, skill gaps, and custom technical interview questions.
+   - If Gemini API is rate-limited (429) or offline, HireSense seamlessly activates its rule-based heuristic question engine with zero failure.
+7. Candidate profile and match analysis are persisted in the database and displayed on screen in real time.
+
+Journey 4: Interview Scheduling & Pipeline Management
+1. Recruiter shortlists candidate and clicks "Schedule Interview".
+2. Sets date, time slot, duration, interview type, and assigns interviewer.
+3. Backend creates interview in `interviews` table, updates candidate status to "Interview Scheduled", and generates internal meeting links.
+4. Dashboard and Interviews tab immediately reflect upcoming sessions with countdowns and quick-prep question studio drawer.
+
+Journey 5: Live Analytics & Reporting
+1. Recruiter opens `/analytics` tab.
+2. Backend calculates real-time aggregation across MySQL tables: total applications, average match score, department hiring spread, score distributions, and candidate funnel.
+3. Recruiter can export complete candidate pipelines to CSV format with a single click.
+
+================================================================================
+3. COMPLETE FOLDER & FILE BREAKDOWN (WHY & HOW EACH FILE WORKS)
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1 BACKEND ARCHITECTURE (d:\HireSense\backend)
+--------------------------------------------------------------------------------
+• `backend/app/main.py`
+  - WHY: Main entrypoint of the FastAPI backend application.
+  - HOW: Initializes FastAPI app, configures CORS middleware, mounts `/uploads` static file server, registers all API routers with prefix `/api/v1`, and runs startup database initialization.
+
+• `backend/app/core/config.py`
+  - WHY: Centralized application configuration and environment variable management.
+  - HOW: Uses Pydantic `BaseSettings` to load `.env` variables (e.g. `DATABASE_URL`, `JWT_SECRET_KEY`, `GEMINI_API_KEY`, `CORS_ORIGINS`, `UPLOAD_DIR`) with production-safe defaults.
+
+• `backend/app/core/database.py`
+  - WHY: Manages database connections, engine pools, and session lifecycles.
+  - HOW: Creates SQLAlchemy engine, automatically provisions MySQL database if not present, provides seamless SQLite fallback if MySQL is unreachable, and exports the `get_db` session dependency.
+
+• `backend/app/core/security.py`
+  - WHY: Cryptographic security, password hashing, and token validation.
+  - HOW: Uses `passlib[bcrypt]` to hash and verify passwords. Uses `python-jose` to sign and decode JWT tokens with expiration timestamps. Provides `get_current_user` auth guard.
+
+• `backend/app/models/` (SQLAlchemy Database Schema Definitions):
+  - `user.py`: `User` table (id, name, email, password_hash, role, is_active, created_at, updated_at).
+  - `job.py`: `Job` table (id, title, department, location, job_type, experience_min, experience_max, description, requirements, responsibilities, salary_min, salary_max, status, created_by).
+  - `candidate.py`: `Candidate` table (id, name, email, phone, location, experience_years, education, current_company, current_role, summary).
+  - `skill.py`: `Skill` master table, `JobSkill` (join table with weightings), `CandidateSkill` (join table with proficiency/years).
+  - `resume.py`: `Resume` (uploaded file metadata, raw extracted text, file path) and `ResumeAnalysis` (overall_score, skill_score, experience_score, matched_skills, missing_skills, reasoning, questions).
+  - `application.py`: `Application` table linking `Candidate` + `Job` with stage status (Applied, Shortlisted, Interview, Hired, etc.) and match score.
+  - `interview.py`: `Interview` table (scheduled_at, duration, interview_type, status, notes, meeting_link) and `InterviewQuestion` table.
+  - `__init__.py`: Exports all models to guarantee proper SQLAlchemy registry binding.
+
+• `backend/app/schemas/` (Pydantic Request & Response Validation Models):
+  - `auth.py`: `UserRegisterRequest`, `UserLoginRequest`, `TokenResponse`, `UserResponse`.
+  - `job.py`: `JobCreateRequest`, `JobUpdateRequest`, `JobResponse`, `JobDetailResponse`.
+  - `candidate.py`: `CandidateCreateRequest`, `CandidateUpdateRequest`, `CandidateResponse`.
+  - `resume.py`: `ResumeUploadResponse`, `ResumeAnalysisResponse`.
+  - `interview.py`: `InterviewCreateRequest`, `InterviewUpdateRequest`, `InterviewResponse`.
+  - `analytics.py`: `DashboardAnalyticsResponse`, `JobAnalyticsResponse`.
+  - `application.py`: `ApplicationResponse`, `ApplicationStatusUpdateRequest`.
+  - `ai.py`: `AIInterviewQuestionsRequest`, `AIQuestionItem`.
+
+• `backend/app/routers/` (HTTP Endpoint Controllers):
+  - `auth.py`: Endpoints for `/login`, `/register`, and `/me`.
+  - `jobs.py`: CRUD endpoints for job listings, status toggling, and skill assignment.
+  - `candidates.py`: Candidate listing, single candidate lookup, candidate creation, and job pipeline attachment.
+  - `resumes.py`: Handles resume file uploads (`multipart/form-data`), invokes parsing and matching pipeline.
+  - `interviews.py`: Interview scheduling, status updates (Completed/Cancelled), and interview notes.
+  - `analytics.py`: Real-time dashboard KPI aggregation and candidate CSV export.
+  - `applications.py`: Candidate application stage progression.
+  - `ai.py`: Dynamic AI question studio generation.
+
+• `backend/app/services/` (Business Logic & External Integrations):
+  - `file_parser.py`: Multi-format text extractor. Handles PDF parsing (`pdfplumber`, `PyPDF2`), DOCX parsing (`python-docx`), plain text, and OCR (`pytesseract` + `pdf2image`) for scanned PDFs.
+  - `scoring.py`: Mathematical candidate-to-job matching algorithm. Computes skill overlap percentage, experience deviation penalty, and weighted composite score.
+  - `gemini_service.py` & `llm_service.py`: Interfaces with Google Gemini LLM SDK (`google-genai` / `google.generativeai`) to generate structured summaries and interview questions, with rule-based fallback.
+  - `matching_service.py`: Orchestrates end-to-end matching between candidate resume and job opening.
+  - `job_service.py`, `candidate_service.py`, `interview_service.py`, `analytics_service.py`, `auth_service.py`: CRUD and database manipulation helpers for their respective domains.
+
+• `backend/app/reset_db.py`
+  - WHY: Utility script to reset the database and clear all dummy/test data.
+  - HOW: Truncates recruitment tables, preserves registered user credentials, empties the `uploads/` directory, and leaves a clean production database.
+
+• `backend/requirements.txt`
+  - WHY: Defines all Python dependencies for the backend environment.
+
+--------------------------------------------------------------------------------
+3.2 FRONTEND ARCHITECTURE (d:\HireSense\Frontend)
+--------------------------------------------------------------------------------
+• `Frontend/src/main.jsx`
+  - WHY: Application entrypoint.
+  - HOW: Renders root React tree with StrictMode and imports global Tailwind CSS (`index.css`).
+
+• `Frontend/src/App.jsx`
+  - WHY: Central routing and authenticated application layout shell.
+  - HOW: Uses `react-router-dom` to configure public auth routes (`/login`, `/register`) and protected routes wrapped in `AppLayout` (Sidebar + Header + Main Viewport).
+
+• `Frontend/src/context/RecruitmentContext.jsx`
+  - WHY: Global state provider for the entire frontend application.
+  - HOW: Manages recruiter auth status, current user profile, live jobs, candidates, interviews, notification toasts, and recruiter settings. Syncs seamlessly with backend API.
+
+• `Frontend/src/services/` (Frontend HTTP Service Layer):
+  - `apiClient.js`: Axios HTTP client with base URL `/api/v1`, bearer token injection, and unified error handling.
+  - `authService.js`: Handles login, register, token persistence, and logout.
+  - `jobsService.js`: Fetches jobs, creates jobs, updates status.
+  - `candidateService.js`: Fetches candidate list, candidate details, status transitions.
+  - `interviewService.js`: Schedules interviews, updates interview status and feedback notes.
+  - `analyticsService.js`: Fetches metrics and triggers CSV download.
+  - `resumeService.js`: Sends resume upload multipart data to backend for AI scoring.
+
+• `Frontend/src/pages/` (Application View Pages):
+  - `DashboardPage.jsx`: Executive recruiter overview with KPI cards, recruitment volume charts, recent jobs, and upcoming interviews.
+  - `JobsPage.jsx`: Job opening management with status tabs (Active, Draft, Closed), search filters, and table/card view toggles.
+  - `CreateJobPage.jsx`: Form for creating new job postings with interactive skill tagger, experience level picker, and salary ranges.
+  - `JobDetailsPage.jsx`: Detailed job view showing job requirements and ranked list of attached candidate applicants.
+  - `CandidatesPage.jsx`: Global candidate talent pool with multi-criteria filtering (job, score tier, experience, status) and search.
+  - `CandidateDetailsPage.jsx`: In-depth candidate profile showing contact info, matched/missing skill badges, experience, and AI interview prep questions.
+  - `ResumeAnalyzerPage.jsx`: Resume screening interface with drag-and-drop file upload, job selection, live match score gauge, skill comparison, and question generator.
+  - `InterviewsPage.jsx`: Interview management screen with scheduling modal, meeting links, status badges, and interview prep drawer.
+  - `AnalyticsPage.jsx`: Recruitment intelligence analytics featuring Recharts visualizations (match distribution, hiring funnel, department spread) and CSV export.
+  - `SettingsPage.jsx`: Recruiter profile settings, company branding, email notification toggles, and match sensitivity preferences.
+  - `LoginPage.jsx` & `RegisterPage.jsx`: Polished authentication portals with HireSense branding and recruiter registration.
+
+• `Frontend/src/components/` (Reusable UI Components):
+  - `layout/`: `Sidebar.jsx`, `Header.jsx`, `MobileNav.jsx`, `PageContainer.jsx`.
+  - `ui/`: `HireSenseLogo.jsx` (official brand component), `Button.jsx`, `Badge.jsx`, `Card.jsx`, `Input.jsx`, `Select.jsx`, `Modal.jsx`, `Tabs.jsx`, `Table.jsx`, `Toast.jsx`, `Progress.jsx`, `Avatar.jsx`, `Skeleton.jsx`, `EmptyState.jsx`.
+  - `candidates/`: `CandidateTable.jsx`, `CandidateInsights.jsx`, `JobRequirementComparison.jsx`, `MatchScoreBadge.jsx`, `SkillBadge.jsx`, `QuestionStudioModal.jsx`, `ResumeViewerModal.jsx`.
+  - `jobs/`: `JobCard.jsx`, `JobTable.jsx`, `JobDetailModal.jsx`.
+  - `interviews/`: `InterviewTable.jsx`, `ScheduleModal.jsx`, `InterviewPrepDrawer.jsx`.
+  - `dashboard/`: `StatCard.jsx`, `RecruitmentChart.jsx`, `RecentJobsTable.jsx`, `CandidateActivity.jsx`.
+  - `resumeAnalysis/`: `ResumeUploader.jsx`, `AnalysisResults.jsx`.
+  - `analytics/`: `AnalyticsCharts.jsx`.
+
+• `Frontend/src/utils/`
+  - `cn.js`: Utility helper combining `clsx` and `tailwind-merge` for clean conditional class composition.
+  - `formatters.js`: Date formatters (Indian standard format), currency formatters (₹ Lakhs/INR/USD), and string helpers.
+
+• `Frontend/public/`
+  - Houses public static assets: `favicon.ico`, `favicon.svg`, `favicon.png`, `apple-touch-icon.png`, `hiresense-logo.png`, `hiresense-icon.png`, `logo192.png`, `logo512.png`.
+
+--------------------------------------------------------------------------------
+3.3 ROOT & CONFIGURATION FILES
+--------------------------------------------------------------------------------
+• `README.md`: Comprehensive project overview, architecture diagram, local setup guide, and feature highlights.
+• `API_CONTRACT.md`: Complete OpenAPI / REST endpoint contract specification documenting all request/response schemas.
+• `HireSense_API.postman_collection.json`: Ready-to-import Postman test collection with sample payloads for every endpoint.
+• `.gitignore`: Excludes `node_modules`, `.venv`, `.env`, SQLite DB files, build output (`dist/`), and temp uploads.
+
+================================================================================
+4. CORE TECHNOLOGIES & LIBRARIES: WHICH WE USE FOR WHAT AND WHY
+================================================================================
+
+TECHNOLOGY / LIBRARY           WHAT WE USE IT FOR & WHY WE CHOSE IT
+────────────────────────────────────────────────────────────────────────────────
+FastAPI (Python 3.11+)         Backend Web Framework. High performance, native 
+                               async support, automatic OpenAPI/Swagger documentation, 
+                               and native Pydantic validation.
+
+Uvicorn                        ASGI Web Server. Ultra-fast asynchronous HTTP server 
+                               powering the FastAPI backend.
+
+SQLAlchemy (v2.0)              Object Relational Mapper (ORM). Decouples business logic 
+                               from database specifics; supports seamless execution on 
+                               both MySQL (Production) and SQLite (Local fallback).
+
+MySQL / PyMySQL                Primary Relational Database. ACID-compliant relational 
+                               storage for users, jobs, candidates, resumes, and interviews.
+
+Pydantic (v2.0)                Data Validation & Schema Serialization. Strict request/
+                               response data enforcement, type hints, and auto-parsing.
+
+python-jose + passlib[bcrypt]  Authentication & Security. Bcrypt for one-way password 
+                               hashing with salt; JWT for stateless secure user sessions.
+
+PyPDF2 + pdfplumber            Native PDF Text Parsing. Extracts structured textual data 
+                               from digital resumes with layout awareness.
+
+pytesseract + pdf2image + PIL  OCR Fallback for Scanned Resumes. Extracts text from 
+                               image-based and scanned PDFs via Tesseract OCR engine.
+
+Google Gemini API              Generative AI & LLM Inference. Generates candidate 
+(`google-genai` / 1.5 Flash)   evaluations, strength/gap breakdowns, and role-specific 
+                               technical interview questions.
+
+Pandas                         Data Manipulation & Analytics. Compiles candidate 
+                               metrics and streams dynamic CSV report exports.
+
+React 18 (Single Page App)     Frontend UI Framework. Component-driven reactive UI 
+                               with fast virtual DOM rendering and clean state hooks.
+
+Vite (v8)                      Frontend Build Tool. Lightning-fast HMR (Hot Module 
+                               Replacement) and optimized production rollups.
+
+Tailwind CSS (v3)              Utility-First CSS Framework. Enables custom, polished, 
+                               modern UI design without bloated stylesheet files.
+
+Lucide React                   Vector Icon Library. Clean, consistent SVG icon set 
+                               across all UI workflows.
+
+Recharts                       Data Visualization. Responsive SVG-based interactive 
+                               charts for recruitment analytics (funnels, trends, scores).
+
+================================================================================
+5. DETAILED ALGORITHMIC & TECHNICAL WORKFLOWS
+================================================================================
+
+--------------------------------------------------------------------------------
+5.1 RESUME EXTRACTION PIPELINE (`file_parser.py`)
+--------------------------------------------------------------------------------
+When a recruiter uploads a resume:
+1. File Identification: Inspects MIME type and file extension (.pdf, .docx, .txt).
+2. Direct Text Extraction:
+   - For PDFs: Uses `pdfplumber` to extract words, preserving layout.
+   - For DOCX: Uses `python-docx` to extract paragraphs and tables.
+   - For TXT: Decodes UTF-8 text directly.
+3. OCR Scanned Detection: If extracted text contains fewer than 40 characters (indicating a scanned image or photo PDF), the system triggers the OCR fallback.
+4. OCR Execution: Uses `pdf2image` to rasterize PDF pages at 300 DPI, then executes `pytesseract.image_to_string()` with text cleaning.
+5. Normalization: Removes null bytes, normalizes whitespace, and structures text for matching.
+
+--------------------------------------------------------------------------------
+5.2 ALGORITHMIC CANDIDATE-JOB SCORING ENGINE (`scoring.py`)
+--------------------------------------------------------------------------------
+The Match Score (0 - 100%) is calculated through a multi-factor formula:
+
+    Final Score = (Skill Score × 0.70) + (Experience Score × 0.20) + (Context Score × 0.10)
+
+1. Skill Score (70% weight):
+   - Compares extracted candidate skills against Job Required Skills using exact + synonym mapping (e.g., "ReactJS" = "React", "K8s" = "Kubernetes").
+   - Mandatory skills carry higher weight than optional/nice-to-have skills.
+   - Skill Match % = (Matched Skill Weights / Total Required Skill Weights) × 100.
+
+2. Experience Score (20% weight):
+   - Compares candidate's years of experience with job's minimum/maximum range.
+   - If candidate experience >= job minimum: 100%.
+   - If candidate experience < job minimum: Soft penalty curve based on the gap (e.g., 2 yrs vs 3 yrs required yields 75%).
+
+3. Context & Education Score (10% weight):
+   - Evaluates degree relevance (B.Tech, M.S., B.S. in Computer Science/Engineering) and domain keyword density.
+
+--------------------------------------------------------------------------------
+5.3 GOOGLE GEMINI AI INTEGRATION & FALLBACK SYSTEM (`gemini_service.py`)
+--------------------------------------------------------------------------------
+1. Prompt Construction: Formats candidate resume summary, job title, matched skills, and missing skills into a structured JSON instruction prompt.
+2. Model Invocation: Calls Google Gemini API (`gemini-1.5-flash` or `gemini-3.6-flash`).
+3. Output Validation: Enforces structured JSON response containing:
+   - `summary`: Concise 2-sentence candidate overview.
+   - `strengths`: Top 3 technical competencies observed.
+   - `gaps`: Identified missing requirements.
+   - `questions`: Array of 5 tailored interview questions categorized by type (Technical, Scenario, Behavioral) and difficulty (Easy, Medium, Hard).
+4. Deterministic Rule-Based Fallback: If the Gemini API reaches its rate limit (HTTP 429), has no network connection, or fails:
+   - HireSense automatically invokes its internal question engine.
+   - Generates questions dynamically targeted at the candidate's specific matched and missing skills.
+   - The user never experiences an error or crash.
+
+--------------------------------------------------------------------------------
+5.4 AUTHENTICATION & JWT SECURITY WORKFLOW (`security.py` + `auth_service.py`)
+--------------------------------------------------------------------------------
+1. Password Hashing: When a user registers or logs in, passwords are never stored in plain text. Passlib bcrypt applies standard 12-round salt hashing.
+2. Token Creation: On successful login, the backend generates an HMAC-SHA256 signed JSON Web Token (JWT) with user ID, email, and expiration time (default: 24 hours).
+3. Authorization Guard: Protected endpoints declare `current_user: User = Depends(get_current_user)`.
+4. Token Verification: The dependency extracts the Bearer token from the `Authorization` header, decodes and verifies the cryptographic signature, and loads the active user from the database.
+
+================================================================================
+6. KEY INTERVIEW QUESTIONS & ANSWERS (DESIGNED FOR YOUR INTERVIEW)
+================================================================================
+
+Q1: "Can you give a 1-minute overview of HireSense?"
+A1: "HireSense is an AI-powered recruitment management platform designed to automate and streamline candidate resume screening. It ingests resumes in any format—including scanned PDFs via OCR—scores candidate compatibility against job openings using a multi-factor matching algorithm, and leverages Google Gemini AI to generate tailored technical interview questions. Recruiters can manage the full pipeline, schedule interviews, and view live recruitment analytics."
+
+Q2: "What is your tech stack and why did you choose it?"
+A2: "For the backend, I chose FastAPI with Python 3.11 for its async speed, automatic OpenAPI documentation, and strict Pydantic data validation. I used SQLAlchemy ORM with MySQL for relational reliability and SQLite fallback support. For the frontend, I built a Single Page Application using React 18, Vite for instant HMR and optimized builds, and Tailwind CSS for a custom, responsive design system. For AI and parsing, I combined PyPDF2/pdfplumber/Tesseract OCR with the Google Gemini API."
+
+Q3: "How does the resume parsing and matching algorithm work?"
+A3: "When a resume is uploaded, the parser first attempts native text extraction using pdfplumber. If the resume is a scanned image, it automatically switches to Tesseract OCR to extract the text. The scoring algorithm then compares extracted candidate skills and years of experience against the job description. The composite score assigns 70% weight to skill match, 20% to experience alignment, and 10% to educational/domain context. This gives recruiters an accurate, deterministic match percentage."
+
+Q4: "What happens if the Gemini AI service fails or hits rate limits?"
+A4: "I implemented a resilient fallback architecture. If the Google Gemini API throws a 429 Rate Limit error or loses connectivity, the backend catches the exception and immediately falls back to an internal deterministic question generator. It crafts technical and scenario-based interview questions directly mapped to the candidate's matched and missing skills, ensuring 100% uptime."
+
+Q5: "How is security handled across the application?"
+A5: "Passwords are encrypted using one-way bcrypt hashing. API authentication is stateless using signed JWT bearer tokens. Every database query uses SQLAlchemy ORM parameterized queries to prevent SQL injection, and Pydantic schemas sanitize and validate all inbound payloads."
+
+Q6: "How does the database handle scalability?"
+A6: "The database uses normalized relational models with foreign key constraints and index lookups on frequently queried fields like candidate email, job status, and application stage. The architecture cleanly separates candidate profiles, resumes, job requisitions, and interviews so a single candidate can apply to multiple jobs without duplicate profile data."
+
+================================================================================
+END OF HIRESENSE PROJECT FLOW & INTERVIEW GUIDE
+================================================================================

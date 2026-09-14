@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, DollarSign, Calendar, UserCheck, Briefcase, XCircle, RotateCcw } from 'lucide-react';
+import { MapPin, Users, IndianRupee, Calendar, UserCheck, Briefcase, XCircle, RotateCcw } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { formatSalary } from '../../utils/formatters';
 
 export function JobDetailModal({ job, isOpen, onClose }) {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export function JobDetailModal({ job, isOpen, onClose }) {
       isOpen={isOpen}
       onClose={onClose}
       title={job.title}
-      subtitle={`${job.department} • ${job.location}`}
+      subtitle={`${job.department} • ${job.location} • ${job.type || 'Remote'}`}
       maxWidth="max-w-2xl"
       footer={
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
@@ -71,19 +72,21 @@ export function JobDetailModal({ job, isOpen, onClose }) {
         {/* Quick Highlights Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
           <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Status</span>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Status & Mode</span>
             <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
               <span className={`w-2 h-2 rounded-full ${job.status === 'Active' ? 'bg-emerald-500' : job.status === 'Closed' ? 'bg-red-500' : 'bg-slate-400'}`} />
-              {job.status}
+              {job.status} ({job.type || 'Remote'})
             </span>
           </div>
           <div>
             <span className="text-slate-400 block text-[10px] uppercase font-semibold">Experience</span>
-            <span className="font-semibold text-slate-800">{job.experienceLevel}</span>
+            <span className="font-semibold text-slate-800">
+              {job.experienceLevel || job.experience || (job.experience_min !== undefined ? `${job.experience_min}-${job.experience_max || job.experience_min + 3} yrs` : '2-5 yrs')}
+            </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Salary Range</span>
-            <span className="font-semibold text-slate-800">{job.salaryRange || 'Competitive'}</span>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Salary / Package</span>
+            <span className="font-semibold text-slate-800 text-emerald-700">{formatSalary(job.salaryRange)}</span>
           </div>
           <div>
             <span className="text-slate-400 block text-[10px] uppercase font-semibold">Hiring Lead</span>

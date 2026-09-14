@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { MatchScoreBadge } from '../candidates/MatchScoreBadge';
+import { formatIndianDate } from '../../utils/formatters';
 
 export function CandidateActivity({ candidates = [] }) {
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ export function CandidateActivity({ candidates = [] }) {
                 {getStatusBadge(cand.status)}
               </td>
               <td className="py-2.5 px-3 sm:px-3.5 text-right text-xs text-slate-400 whitespace-nowrap">
-                {cand.appliedDate}
+                {formatIndianDate(cand.appliedDate)}
               </td>
             </tr>
           ))}

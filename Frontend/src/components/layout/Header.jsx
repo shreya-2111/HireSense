@@ -4,7 +4,6 @@ import {
   Menu,
   Search,
   Bell,
-  Plus,
   ChevronDown,
   Calendar,
   Settings,
@@ -13,16 +12,17 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
+import { HireSenseLogo } from '../ui/HireSenseLogo';
 import { useRecruitment } from '../../context/RecruitmentContext';
 
 export function Header({ onOpenMobileMenu }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, settings, scheduledInterviewsCount, candidates, logout } = useRecruitment();
+  const { user, settings, scheduledInterviewsCount, todayInterviewsCount, candidates, interviews, logout } = useRecruitment();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const pendingCount = candidates.filter((c) => c.status === 'Under Review').length;
+  const pendingCount = candidates.filter((c) => c.status === 'Under Review' || c.status === 'Applied').length;
 
   const handleLogout = () => {
     setShowUserMenu(false);
@@ -30,9 +30,9 @@ export function Header({ onOpenMobileMenu }) {
     navigate('/login');
   };
 
-  const displayName = user?.name || settings.recruiterName || 'Sarah Lin';
-  const displayEmail = user?.email || settings.recruiterEmail || 'sarah.lin@hiresense.internal';
-  const displayInitials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SL';
+  const displayName = user?.name || settings.recruiterName || 'Shreya Raval';
+  const displayEmail = user?.email || settings.recruiterEmail || 'shreyaraval482@gmail.com';
+  const displayInitials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SR';
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between z-20 shrink-0">
@@ -46,6 +46,10 @@ export function Header({ onOpenMobileMenu }) {
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        <div className="lg:hidden flex items-center">
+          <HireSenseLogo variant="full" size="h-7" className="max-w-[130px]" />
+        </div>
 
         {/* Global Recruiter Search */}
         <div className="relative w-full max-w-md hidden sm:block">
@@ -77,7 +81,11 @@ export function Header({ onOpenMobileMenu }) {
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 hover:bg-blue-100 border border-blue-200/80 text-[11px] font-medium text-blue-700 transition-colors"
           >
             <Calendar className="w-3 h-3 text-blue-600" />
-            <span>{scheduledInterviewsCount} interviews today</span>
+            <span>
+              {todayInterviewsCount > 0
+                ? `${todayInterviewsCount} ${todayInterviewsCount === 1 ? 'interview' : 'interviews'} today`
+                : `${scheduledInterviewsCount} upcoming ${scheduledInterviewsCount === 1 ? 'interview' : 'interviews'}`}
+            </span>
           </button>
         )}
 
@@ -99,19 +107,28 @@ export function Header({ onOpenMobileMenu }) {
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95">
               <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-900">Notifications</span>
-                <span className="text-[11px] text-blue-600 font-medium cursor-pointer">Clear all</span>
+                <span className="text-[11px] text-blue-600 font-medium cursor-pointer" onClick={() => setShowNotifications(false)}>Dismiss</span>
               </div>
               <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                <div className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer text-xs">
-                  <p className="font-medium text-slate-800">New 92% match candidate</p>
-                  <p className="text-slate-500 text-[11px] mt-0.5">Aarav Shah applied for Frontend Developer</p>
-                  <span className="text-[10px] text-slate-400 mt-1 block">15 minutes ago</span>
-                </div>
-                <div className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer text-xs">
-                  <p className="font-medium text-slate-800">Interview scheduled</p>
-                  <p className="text-slate-500 text-[11px] mt-0.5">Elena Rostova with Rachel Torres at 2:00 PM</p>
-                  <span className="text-[10px] text-slate-400 mt-1 block">1 hour ago</span>
-                </div>
+                {interviews.filter(i => i.status === 'Scheduled').map((int) => (
+                  <div key={int.id} className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer text-xs" onClick={() => { setShowNotifications(false); navigate('/interviews'); }}>
+                    <p className="font-medium text-slate-800">Interview Scheduled</p>
+                    <p className="text-slate-500 text-[11px] mt-0.5">{int.candidateName || 'Candidate'} on {int.date} ({int.time})</p>
+                    <span className="text-[10px] text-slate-400 mt-1 block">{int.type || 'Technical Round'}</span>
+                  </div>
+                ))}
+                {candidates.map((cand) => (
+                  <div key={cand.id} className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer text-xs" onClick={() => { setShowNotifications(false); navigate(`/candidates/${cand.id}`); }}>
+                    <p className="font-medium text-slate-800">Candidate in Pipeline ({cand.matchScore}% Match)</p>
+                    <p className="text-slate-500 text-[11px] mt-0.5">{cand.name} — {cand.appliedRole || 'Candidate'}</p>
+                    <span className="text-[10px] text-slate-400 mt-1 block">{cand.status}</span>
+                  </div>
+                ))}
+                {candidates.length === 0 && interviews.length === 0 && (
+                  <div className="px-4 py-4 text-center text-xs text-slate-400">
+                    No active notifications
+                  </div>
+                )}
               </div>
               <div className="px-4 py-1.5 border-t border-slate-100 bg-slate-50/60 text-center">
                 <button
@@ -121,25 +138,12 @@ export function Header({ onOpenMobileMenu }) {
                   }}
                   className="text-xs font-semibold text-blue-600 hover:underline"
                 >
-                  View all candidate updates
+                  View all candidates
                 </button>
               </div>
             </div>
           )}
         </div>
-
-        <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
-
-        {/* Primary Action Button (Desktop) */}
-        <Button
-          variant="primary"
-          size="sm"
-          icon={Plus}
-          onClick={() => navigate('/jobs/create')}
-          className="hidden sm:inline-flex shadow-xs text-xs font-semibold"
-        >
-          Create Job
-        </Button>
 
         {/* Recruiter Avatar Dropdown */}
         <div className="relative">

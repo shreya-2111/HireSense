@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { HireSenseLogo } from '../components/ui/HireSenseLogo';
 import { useRecruitment } from '../context/RecruitmentContext';
 
 export function LoginPage() {
@@ -20,41 +20,38 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
       return;
     }
-    setError('');
-    login(email, password);
-    navigate('/');
-  };
-
-  const handleDemoLogin = () => {
-    login('sarah.lin@hiresense.internal', 'demo123');
-    navigate('/');
+    try {
+      setIsSubmitting(true);
+      setError('');
+      await login(email.trim(), password.trim());
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Incorrect email or password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-slate-800">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand Treatment */}
-        <div className="inline-flex items-center gap-2.5 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-            <span className="text-lg tracking-tight font-black">H</span>
-          </div>
-          <div className="text-left">
-            <span className="text-xl font-bold text-slate-900 tracking-tight block leading-tight">HireSense</span>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recruitment Suite</span>
-          </div>
+        <div className="flex justify-center mb-4">
+          <HireSenseLogo variant="full" size="h-12" className="max-w-[240px]" />
         </div>
-        <h2 className="mt-4 text-2xl font-bold text-slate-900 tracking-tight">
+        <h2 className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">
           Welcome back
         </h2>
         <p className="mt-1 text-xs sm:text-sm text-slate-500">
-          Sign in to access your candidate pipelines and screening queues.
+          Sign in with your registered recruiter account.
         </p>
       </div>
 
@@ -91,9 +88,6 @@ export function LoginPage() {
                 <label className="block text-xs font-semibold text-slate-700">
                   Password
                 </label>
-                <a href="#forgot" onClick={(e) => { e.preventDefault(); alert("In demo mode, please use 1-click Demo Login or any password."); }} className="text-xs text-blue-600 hover:underline">
-                  Forgot password?
-                </a>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -130,34 +124,12 @@ export function LoginPage() {
               </label>
             </div>
 
-            <Button type="submit" variant="primary" className="w-full justify-center py-2.5">
-              Sign In
+            <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full justify-center py-2.5">
+              {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-400 font-semibold tracking-wider">
-                Or Quick Test
-              </span>
-            </div>
-          </div>
-
-          {/* 1-Click Recruiter Demo Sign-in */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDemoLogin}
-            className="w-full justify-center py-2.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100"
-          >
-            <ShieldCheck className="w-4 h-4 text-blue-600 mr-2" />
-            Sign in as Demo Recruiter (Sarah Lin)
-          </Button>
-
-          <p className="text-center text-xs text-slate-500 pt-2">
+          <p className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
             Don't have an account yet?{' '}
             <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">
               Create an account

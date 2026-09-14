@@ -15,10 +15,10 @@ export function CreateJobPage() {
   // Form states
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('Engineering');
-  const [location, setLocation] = useState('Remote (US/Canada)');
-  const [employmentType, setEmploymentType] = useState('Full-time');
+  const [location, setLocation] = useState('Bengaluru, Karnataka (Hybrid)');
+  const [employmentType, setEmploymentType] = useState('Remote');
   const [experienceLevel, setExperienceLevel] = useState('Mid-Senior (3-5 yrs)');
-  const [salaryRange, setSalaryRange] = useState('$120,000 - $145,000');
+  const [salaryRange, setSalaryRange] = useState('₹12,00,000 - ₹18,00,000 / year');
   const [description, setDescription] = useState('');
 
   // Skills chips
@@ -70,12 +70,35 @@ export function CreateJobPage() {
       return;
     }
 
+    let expMin = 3;
+    let expMax = 5;
+    if (experienceLevel.includes('0-2')) {
+      expMin = 0;
+      expMax = 2;
+    } else if (experienceLevel.includes('2-4')) {
+      expMin = 2;
+      expMax = 4;
+    } else if (experienceLevel.includes('3-5')) {
+      expMin = 3;
+      expMax = 5;
+    } else if (experienceLevel.includes('5+')) {
+      expMin = 5;
+      expMax = 8;
+    } else if (experienceLevel.includes('7+')) {
+      expMin = 7;
+      expMax = 12;
+    }
+
     addJob({
       title: title.trim(),
       department,
       location,
       type: employmentType,
       experienceLevel,
+      experience_min: expMin,
+      experience_max: expMax,
+      experienceMin: expMin,
+      experienceMax: expMax,
       salaryRange,
       description: description.trim() || `Exciting opportunity for a ${title} to contribute to our high-growth platform.`,
       requiredSkills,
@@ -138,22 +161,24 @@ export function CreateJobPage() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               >
-                <option value="Remote (US/Canada)">Remote (US/Canada)</option>
-                <option value="Remote (Global)">Remote (Global)</option>
-                <option value="San Francisco, CA (Hybrid)">San Francisco, CA (Hybrid)</option>
-                <option value="New York, NY (Hybrid)">New York, NY (Hybrid)</option>
-                <option value="Austin, TX (On-site)">Austin, TX (On-site)</option>
+                <option value="Bengaluru, Karnataka">Bengaluru, Karnataka</option>
+                <option value="Pune, Maharashtra">Pune, Maharashtra</option>
+                <option value="Ahmedabad, Gujarat">Ahmedabad, Gujarat</option>
+                <option value="Mumbai, Maharashtra">Mumbai, Maharashtra</option>
+                <option value="Hyderabad, Telangana">Hyderabad, Telangana</option>
+                <option value="Delhi NCR">Delhi NCR / Noida / Gurugram</option>
+                <option value="Remote (India / Global)">Remote (India / Global)</option>
               </Select>
 
               <Select
-                label="Employment Type"
+                label="Job Type *"
                 value={employmentType}
                 onChange={(e) => setEmploymentType(e.target.value)}
               >
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Contract">Contract</option>
-                <option value="Internship">Internship</option>
+                <option value="Remote">Remote</option>
+                <option value="Work from Home">Work from Home</option>
+                <option value="Work from Office">Work from Office</option>
+                <option value="Hybrid">Hybrid</option>
               </Select>
 
               <Select
@@ -170,8 +195,8 @@ export function CreateJobPage() {
 
               <div className="sm:col-span-2">
                 <Input
-                  label="Target Salary or Hourly Range"
-                  placeholder="e.g. $120,000 - $145,000 / year"
+                  label="Target Salary or Package (₹ / LPA)"
+                  placeholder="e.g. ₹12,00,000 - ₹18,00,000 / year or ₹12 - ₹18 LPA"
                   value={salaryRange}
                   onChange={(e) => setSalaryRange(e.target.value)}
                 />

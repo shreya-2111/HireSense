@@ -26,52 +26,58 @@ export function ResumeAnalyzerPage() {
   const { jobs, addCandidate } = useRecruitment();
 
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id || 'job-1');
+  const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id || '1');
   const [useCustomJob, setUseCustomJob] = useState(false);
   const [customJobText, setCustomJobText] = useState('');
 
-  // Simple, clean loading state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [error, setError] = useState('');
   const [isQuestionStudioOpen, setIsQuestionStudioOpen] = useState(false);
 
-  const activeJob = jobs.find((j) => j.id === selectedJobId) || jobs[0];
+  const openJobs = jobs.filter((j) => j.status === 'Active');
 
-  const handleSelectSample = (sample) => {
-    setSelectedFile({
-      name: sample.fileName,
-      size: sample.fileSize,
-      rawText: sample.rawText,
-      candidateName: sample.title.split('—')[0].trim(),
-      sampleData: sample.matchResult,
-    });
-    if (sample.suggestedJobId) {
-      setSelectedJobId(sample.suggestedJobId);
+  // Sync selectedJobId if jobs array loaded asynchronously
+  React.useEffect(() => {
+    if (openJobs.length > 0 && (!selectedJobId || !openJobs.some(j => String(j.id) === String(selectedJobId)))) {
+      setSelectedJobId(openJobs[0].id);
     }
-  };
+  }, [openJobs, selectedJobId]);
+
+  const activeJob = openJobs.find((j) => String(j.id) === String(selectedJobId)) || openJobs[0];
 
   const handleStartAnalysis = async () => {
     if (!selectedFile) {
-      alert("Please upload a resume or choose a quick sample profile first.");
+      setError("Please upload a resume file first.");
       return;
     }
 
-    setIsAnalyzing(true);
-    const result = await resumeService.analyzeResume(selectedFile, activeJob);
-    setAnalysisResult(result);
-    setIsAnalyzing(false);
+    try {
+      setIsAnalyzing(true);
+      setError('');
+      const targetJob = useCustomJob && customJobText.trim()
+        ? { id: activeJob?.id || 1, title: 'Custom Requisition', requiredSkills: customJobText.split(',').map(s => s.trim()) }
+        : activeJob;
+      const result = await resumeService.analyzeResume(selectedFile, targetJob);
+      setAnalysisResult(result);
+    } catch (err) {
+      setError(err.message || "Failed to analyze resume. Please verify the backend service is running.");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleReset = () => {
     setSelectedFile(null);
     setAnalysisResult(null);
+    setError('');
     setIsAnalyzing(false);
   };
 
   return (
     <PageContainer
       title="Resume Analyzer"
-      subtitle="Analyze a candidate's resume against a job requirement to compute match scores, extract skills, and generate interview questions."
+      subtitle="Screen candidate resumes against real job requirements to compute match scores, extract verified skills, and generate tailored interview probes."
       actions={
         analysisResult && (
           <div className="flex items-center gap-2">
@@ -90,6 +96,13 @@ export function ResumeAnalyzerPage() {
         )
       }
     >
+      {error && (
+        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-xs sm:text-sm text-red-700 font-medium flex items-center gap-2.5">
+          <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {analysisResult ? (
         <>
           <AnalysisResults
@@ -101,14 +114,15 @@ export function ResumeAnalyzerPage() {
             isOpen={isQuestionStudioOpen}
             onClose={() => setIsQuestionStudioOpen(false)}
             candidate={{
+              id: analysisResult.candidateId,
               name: analysisResult.candidateName,
-              appliedRole: activeJob?.title || 'Candidate',
+              appliedRole: activeJob?.title || analysisResult.jobTitle || 'Candidate',
               matchScore: analysisResult.matchScore,
               matchedSkills: analysisResult.matchedSkills,
               missingSkills: analysisResult.missingSkills,
               interviewQuestions: analysisResult.interviewQuestions?.map((q, i) => ({
                 id: `q-${i}`,
-                question: q,
+                question: typeof q === 'string' ? q : q.question,
                 rationale: 'Generated from resume analysis'
               }))
             }}
@@ -124,7 +138,7 @@ export function ResumeAnalyzerPage() {
                 <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
                   1
                 </span>
-                <CardTitle>Select Job Opening</CardTitle>
+                <CardTitle>Select Target Job Opening</CardTitle>
               </div>
               <button
                 type="button"
@@ -137,17 +151,26 @@ export function ResumeAnalyzerPage() {
             <CardContent className="space-y-4">
               {!useCustomJob ? (
                 <div>
-                  <Select
-                    label="Select Active Requisition *"
-                    value={selectedJobId}
-                    onChange={(e) => setSelectedJobId(e.target.value)}
-                  >
-                    {jobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.title} — {job.department} ({job.experienceLevel})
-                      </option>
-                    ))}
-                  </Select>
+                  {openJobs.length > 0 ? (
+                    <Select
+                      label="Select Active Requisition *"
+                      value={selectedJobId}
+                      onChange={(e) => setSelectedJobId(e.target.value)}
+                    >
+                      {openJobs.map((job) => (
+                        <option key={job.id} value={job.id}>
+                          {job.title} — {job.department} ({job.experienceLevel || job.experience || `${job.experience_min || 0}-${job.experience_max || 5} yrs`})
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center justify-between">
+                      <span>No active jobs created yet. Please create an active job opening first or use custom requirements.</span>
+                      <Button size="sm" variant="primary" onClick={() => navigate('/jobs/create')}>
+                        Create Job
+                      </Button>
+                    </div>
+                  )}
 
                   {activeJob && (
                     <div className="mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
@@ -156,8 +179,8 @@ export function ResumeAnalyzerPage() {
                         <span className="text-slate-500">{activeJob.location}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <span className="text-slate-400 font-medium mr-1">Mandatory skills:</span>
-                        {activeJob.requiredSkills?.map((s) => (
+                        <span className="text-slate-400 font-medium mr-1">Required skills:</span>
+                        {(activeJob.requiredSkills || activeJob.skills || []).map((s) => (
                           <span key={s} className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-700">
                             {s}
                           </span>
@@ -175,7 +198,7 @@ export function ResumeAnalyzerPage() {
                     rows={4}
                     value={customJobText}
                     onChange={(e) => setCustomJobText(e.target.value)}
-                    placeholder="Paste role requirements, required skills, and experience details..."
+                    placeholder="Enter required skills (comma separated, e.g. React, Python, FastAPI, MySQL)..."
                     className="w-full text-xs sm:text-sm p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -192,13 +215,16 @@ export function ResumeAnalyzerPage() {
                 </span>
                 <CardTitle>Upload Candidate Resume</CardTitle>
               </div>
-              <span className="text-xs text-slate-400">Supported formats: PDF / DOCX</span>
+              <span className="text-xs text-slate-400">Supported formats: PDF / DOCX / TXT</span>
             </CardHeader>
             <CardContent>
               <ResumeUploader
                 selectedFile={selectedFile}
-                onSelectFile={setSelectedFile}
-                onSelectSample={handleSelectSample}
+                onSelectFile={(file) => {
+                  setError('');
+                  setAnalysisResult(null);
+                  setSelectedFile(file);
+                }}
               />
             </CardContent>
           </Card>
@@ -231,10 +257,10 @@ export function ResumeAnalyzerPage() {
                 <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                   <div className="flex items-center gap-2 text-xs font-semibold text-blue-700">
                     <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Analyzing resume against {activeJob?.title || 'target position'} requirements...</span>
+                    <span>Parsing resume text and calculating match score against {activeJob?.title || 'selected position'}...</span>
                   </div>
                   <p className="text-[11px] text-slate-500 pl-5">
-                    Extracting skills, cross-referencing experience, and calculating fit scores.
+                    Extracting candidate background, verifying required stack, and generating questions.
                   </p>
                 </div>
               )}

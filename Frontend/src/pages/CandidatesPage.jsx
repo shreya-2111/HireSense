@@ -38,7 +38,7 @@ export function CandidatesPage() {
         (cand.matchedSkills && cand.matchedSkills.some((s) => s.toLowerCase().includes(q)));
 
       // Job opening filter
-      const matchesJob = selectedJob === 'all' || cand.appliedJobId === selectedJob;
+      const matchesJob = selectedJob === 'all' || String(cand.appliedJobId) === String(selectedJob);
 
       // Score filter
       let matchesScore = true;

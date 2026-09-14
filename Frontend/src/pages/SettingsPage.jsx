@@ -25,12 +25,12 @@ export function SettingsPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    recruiterName: settings.recruiterName || 'Sarah Lin',
-    recruiterTitle: settings.recruiterTitle || 'Senior Technical Recruiter',
-    recruiterEmail: settings.recruiterEmail || 'sarah.lin@hiresense.internal',
-    companyName: settings.companyName || 'Acme Cloud Technologies',
+    recruiterName: settings.recruiterName || 'Shreya Raval',
+    recruiterTitle: settings.recruiterTitle || 'Talent Acquisition Lead',
+    recruiterEmail: settings.recruiterEmail || 'shreyaraval482@gmail.com',
+    companyName: settings.companyName || 'HireSense AI',
     department: settings.department || 'Talent Acquisition',
-    timezone: settings.timezone || 'America/New_York (EST)',
+    timezone: settings.timezone || 'Asia/Kolkata (IST, UTC+5:30)',
     emailNewApplicants: settings.emailNewApplicants ?? true,
     highMatchThreshold: settings.highMatchThreshold || 85,
     dailyInterviewDigest: settings.dailyInterviewDigest ?? true,
@@ -114,12 +114,12 @@ export function SettingsPage() {
                     value={formData.timezone}
                     onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                   >
+                    <option value="Asia/Kolkata (IST, UTC+5:30)">India Standard Time (IST, UTC+5:30)</option>
+                    <option value="Asia/Kolkata (IST)">India Standard Time (IST)</option>
                     <option value="America/New_York (EST)">Eastern Time (US & Canada)</option>
                     <option value="America/Chicago (CST)">Central Time (US & Canada)</option>
-                    <option value="America/Denver (MST)">Mountain Time (US & Canada)</option>
                     <option value="America/Los_Angeles (PST)">Pacific Time (US & Canada)</option>
                     <option value="Europe/London (GMT)">London (GMT)</option>
-                    <option value="Asia/Kolkata (IST)">India Standard Time (IST)</option>
                   </Select>
                 </div>
               </CardContent>

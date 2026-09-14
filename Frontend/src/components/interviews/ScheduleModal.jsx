@@ -10,19 +10,41 @@ export function ScheduleModal({ isOpen, onClose, preselectedCandidate }) {
 
   const [candidateId, setCandidateId] = useState(preselectedCandidate?.id || candidates[0]?.id || '');
   const [position, setPosition] = useState(preselectedCandidate?.appliedRole || jobs[0]?.title || '');
-  const [date, setDate] = useState('2025-03-02');
-  const [time, setTime] = useState('2:00 PM - 3:00 PM EST');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState('02:00 PM - 03:00 PM IST');
   const [type, setType] = useState('Technical Deep-Dive');
   const [interviewer, setInterviewer] = useState('David Larson (VP Eng)');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      const activeCand = preselectedCandidate || candidates.find(c => String(c.id) === String(candidateId)) || candidates[0];
+      if (activeCand) {
+        setCandidateId(activeCand.id);
+        setPosition(activeCand.appliedRole || jobs[0]?.title || '');
+      }
+    }
+  }, [isOpen, preselectedCandidate, candidates, jobs]);
+
+  const handleCandidateChange = (candId) => {
+    setCandidateId(candId);
+    const cand = candidates.find(c => String(c.id) === String(candId));
+    if (cand?.appliedRole) {
+      setPosition(cand.appliedRole);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    const candidate = candidates.find((c) => c.id === candidateId);
+    const candidate = candidates.find((c) => String(c.id) === String(candidateId)) || candidates[0];
+    const matchedJob = jobs.find((j) => j.title === position || String(j.id) === String(candidate?.appliedJobId)) || jobs[0];
+    const targetJobId = candidate?.appliedJobId || matchedJob?.id || 4;
+
     scheduleInterview({
-      candidateId,
+      candidateId: candidate ? candidate.id : candidateId,
+      jobId: targetJobId,
       candidateName: candidate ? candidate.name : "Candidate",
       candidateAvatar: candidate ? candidate.avatar : "CD",
-      position,
+      position: position || matchedJob?.title || "Software Engineer",
       date,
       time,
       type,
@@ -95,10 +117,10 @@ export function ScheduleModal({ isOpen, onClose, preselectedCandidate }) {
             required
           />
           <Input
-            label="Time Window"
+            label="Time Window (12-Hour IST)"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            placeholder="e.g. 2:00 PM - 3:00 PM EST"
+            placeholder="e.g. 02:00 PM - 03:00 PM IST"
             required
           />
         </div>
@@ -126,7 +148,7 @@ export function ScheduleModal({ isOpen, onClose, preselectedCandidate }) {
           <option value="Rachel Torres (Lead Architect)">Rachel Torres (Lead Architect)</option>
           <option value="Siddharth Rao (Head of Design)">Siddharth Rao (Head of Design)</option>
           <option value="Dr. Elena Zhao (Director Data)">Dr. Elena Zhao (Director of Data)</option>
-          <option value="Sarah Lin (Lead Recruiter)">Sarah Lin (Lead Recruiter)</option>
+          <option value="Shreya Raval (Talent Acquisition Lead)">Shreya Raval (Talent Acquisition Lead)</option>
         </Select>
       </form>
     </Modal>

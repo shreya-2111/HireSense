@@ -1,14 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Briefcase,
   Users,
   CheckCircle2,
   Calendar,
-  Plus,
   ArrowRight,
-  TrendingUp,
-  FileSearch
+  TrendingUp
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -34,30 +32,18 @@ export function DashboardPage() {
     ? ((reviewedCandidatesCount / totalCandidatesCount) * 100).toFixed(0)
     : '0';
 
+  const dateRangeText = useMemo(() => {
+    const now = new Date();
+    const past = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const startStr = past.toLocaleString('default', { month: 'short', year: 'numeric' });
+    const endStr = now.toLocaleString('default', { month: 'short', year: 'numeric' });
+    return `${startStr} — ${endStr}`;
+  }, []);
+
   return (
     <PageContainer
       title="Dashboard"
       subtitle="Overview of your recruitment activity"
-      actions={
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={FileSearch}
-            onClick={() => navigate('/resume-analyzer')}
-          >
-            Analyze Resume
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onClick={() => navigate('/jobs/create')}
-          >
-            Create Job
-          </Button>
-        </div>
-      }
     >
       {/* 4 Key Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -106,7 +92,7 @@ export function DashboardPage() {
               </p>
             </div>
             <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md self-start sm:self-auto">
-              Sep 2024 — Feb 2025
+              {dateRangeText}
             </span>
           </div>
         </CardHeader>

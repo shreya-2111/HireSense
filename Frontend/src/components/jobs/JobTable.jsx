@@ -5,6 +5,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { formatIndianDate } from '../../utils/formatters';
 
 export function JobTable({ jobs = [], onSelectJob }) {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export function JobTable({ jobs = [], onSelectJob }) {
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
                     <span>{job.type}</span>
                     <span>•</span>
-                    <span>{job.experienceLevel}</span>
+                    <span>{job.experienceLevel || job.experience}</span>
                   </div>
                 </div>
               </TableCell>
@@ -134,7 +135,7 @@ export function JobTable({ jobs = [], onSelectJob }) {
               {/* Created */}
               <TableCell>
                 <span className="text-xs text-slate-500">
-                  {job.createdDate}
+                  {formatIndianDate(job.createdDate)}
                 </span>
               </TableCell>
 

@@ -1,9 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { MOCK_RESUME_SAMPLES } from '../../data/mockResumeSamples';
+import { UploadCloud, CheckCircle2 } from 'lucide-react';
 
-export function ResumeUploader({ selectedFile, onSelectFile, onSelectSample }) {
+export function ResumeUploader({ selectedFile, onSelectFile }) {
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -21,24 +19,21 @@ export function ResumeUploader({ selectedFile, onSelectFile, onSelectSample }) {
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      onSelectFile({
-        name: file.name,
-        size: `${Math.round(file.size / 1024)} KB`,
-        rawText: "Uploaded file content parsed via client mock engine.",
-      });
+      onSelectFile(file);
     }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      onSelectFile({
-        name: file.name,
-        size: `${Math.round(file.size / 1024)} KB`,
-        rawText: "Uploaded file content parsed via client mock engine.",
-      });
+      onSelectFile(file);
     }
   };
+
+  const fileName = selectedFile instanceof File ? selectedFile.name : selectedFile?.name;
+  const fileSize = selectedFile instanceof File
+    ? `${Math.round(selectedFile.size / 1024)} KB`
+    : selectedFile?.size || 'Ready for analysis';
 
   return (
     <div className="space-y-4">
@@ -70,8 +65,8 @@ export function ResumeUploader({ selectedFile, onSelectFile, onSelectSample }) {
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">{selectedFile.name}</p>
-              <p className="text-xs text-slate-500">{selectedFile.size} • Ready for analysis</p>
+              <p className="text-sm font-semibold text-slate-900">{fileName}</p>
+              <p className="text-xs text-slate-500">{fileSize} • Ready for analysis</p>
             </div>
             <span className="text-xs text-blue-600 font-medium underline mt-1">
               Click to replace file
@@ -92,36 +87,6 @@ export function ResumeUploader({ selectedFile, onSelectFile, onSelectSample }) {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Recruiter 1-Click Demo Helper */}
-      <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/80">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-700">
-            Quick Test: Select a Sample Candidate Resume
-          </span>
-          <span className="text-[10px] text-slate-400">Pre-formatted profiles</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {MOCK_RESUME_SAMPLES.map((sample) => (
-            <button
-              key={sample.id}
-              type="button"
-              onClick={() => onSelectSample(sample)}
-              className="p-2.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30 text-left transition-all group"
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="text-xs font-semibold text-slate-900 truncate group-hover:text-blue-600">
-                  {sample.title.split('—')[0]}
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-500 block truncate mt-0.5">
-                {sample.title.split('—')[1] || 'Specialist'}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

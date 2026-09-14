@@ -10,7 +10,7 @@ export function PageContainer({
   className,
 }) {
   return (
-    <div className={cn("p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6", className)}>
+    <div className={cn("px-3 sm:px-5 lg:px-6 py-4 max-w-[1680px] mx-auto w-full space-y-4 sm:space-y-5", className)}>
       {/* Header section if title provided */}
       {(title || breadcrumbs) && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80">

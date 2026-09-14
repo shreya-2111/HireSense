@@ -33,12 +33,13 @@ export function InterviewsPage() {
   const filteredInterviews = useMemo(() => {
     return interviews.filter((item) => {
       const matchesTab = activeTab === 'all' || item.status === activeTab;
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return matchesTab;
       const matchesSearch =
-        item.candidateName.toLowerCase().includes(q) ||
-        item.position.toLowerCase().includes(q) ||
-        item.interviewer.toLowerCase().includes(q) ||
-        item.type.toLowerCase().includes(q);
+        (item.candidateName || '').toLowerCase().includes(q) ||
+        (item.position || item.jobTitle || '').toLowerCase().includes(q) ||
+        (item.interviewer || '').toLowerCase().includes(q) ||
+        (item.type || '').toLowerCase().includes(q);
 
       return matchesTab && matchesSearch;
     });

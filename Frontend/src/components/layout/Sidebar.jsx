@@ -15,6 +15,7 @@ import {
 import { cn } from '../../utils/cn';
 import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
+import { HireSenseLogo } from '../ui/HireSenseLogo';
 import { useRecruitment } from '../../context/RecruitmentContext';
 
 const NAV_ITEMS = [
@@ -31,9 +32,9 @@ export function Sidebar({ className, onCloseMobile }) {
   const navigate = useNavigate();
   const { user, settings, activeJobsCount, scheduledInterviewsCount, logout } = useRecruitment();
 
-  const displayName = user?.name || settings.recruiterName || 'Sarah Lin';
-  const displayCompany = user?.company || settings.companyName || 'Acme Cloud Technologies';
-  const displayInitials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SL';
+  const displayName = user?.name || settings.recruiterName || 'Shreya Raval';
+  const displayCompany = user?.company || settings.companyName || 'HireSense AI';
+  const displayInitials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SR';
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -47,14 +48,8 @@ export function Sidebar({ className, onCloseMobile }) {
     <aside className={cn("w-64 bg-white border-r border-slate-200 flex flex-col h-full select-none shrink-0", className)}>
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100">
-        <NavLink to="/" className="flex items-center gap-2.5" onClick={onCloseMobile}>
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-            <span className="text-sm tracking-tight font-black">H</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-base font-bold text-slate-900 tracking-tight leading-tight">HireSense</span>
-            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Recruitment Suite</span>
-          </div>
+        <NavLink to="/" className="flex items-center gap-2.5 group" onClick={onCloseMobile}>
+          <HireSenseLogo variant="full" size="h-9" className="max-w-[175px] object-contain group-hover:opacity-95 transition-opacity" />
         </NavLink>
       </div>
 

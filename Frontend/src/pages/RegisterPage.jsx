@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, Building, Briefcase, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { User, Mail, Lock, Building, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { HireSenseLogo } from '../components/ui/HireSenseLogo';
 import { useRecruitment } from '../context/RecruitmentContext';
 
 export function RegisterPage() {
@@ -22,45 +23,52 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password.trim()) {
       setError('Please complete all required fields.');
+      return;
+    }
+    if (password.trim().length < 6) {
+      setError('Password must be at least 6 characters.');
       return;
     }
     if (!agreeTerms) {
       setError('Please agree to the terms to proceed.');
       return;
     }
-    setError('');
-    register({
-      name: name.trim(),
-      email: email.trim(),
-      company: company.trim() || 'Tech Enterprise',
-      role: role.trim(),
-    });
-    navigate('/');
+    try {
+      setIsSubmitting(true);
+      setError('');
+      await register({
+        name: name.trim(),
+        email: email.trim(),
+        password: password.trim(),
+        company: company.trim() || 'Tech Enterprise',
+        role: role.trim(),
+      });
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please check your details.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-slate-800">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand */}
-        <div className="inline-flex items-center gap-2.5 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-            <span className="text-lg tracking-tight font-black">H</span>
-          </div>
-          <div className="text-left">
-            <span className="text-xl font-bold text-slate-900 tracking-tight block leading-tight">HireSense</span>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Recruitment Suite</span>
-          </div>
+        <div className="flex justify-center mb-4">
+          <HireSenseLogo variant="full" size="h-12" className="max-w-[240px]" />
         </div>
-        <h2 className="mt-4 text-2xl font-bold text-slate-900 tracking-tight">
+        <h2 className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">
           Create recruiter account
         </h2>
         <p className="mt-1 text-xs sm:text-sm text-slate-500">
-          Start screening resumes and ranking candidate pipelines in minutes.
+          Start screening resumes and managing candidate pipelines.
         </p>
       </div>
 
@@ -179,12 +187,12 @@ export function RegisterPage() {
                 className="h-4 w-4 mt-0.5 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
               />
               <label htmlFor="terms" className="ml-2 block text-xs text-slate-600 leading-relaxed">
-                I agree to the HireSense Recruiter Terms of Service and data processing guidelines.
+                I agree to the HireSense Recruiter Terms of Service.
               </label>
             </div>
 
-            <Button type="submit" variant="primary" className="w-full justify-center py-2.5">
-              Create Free Account
+            <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full justify-center py-2.5">
+              {isSubmitting ? 'Creating account...' : 'Create Recruiter Account'}
             </Button>
           </form>
 

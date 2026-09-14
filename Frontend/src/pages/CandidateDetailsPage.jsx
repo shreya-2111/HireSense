@@ -28,6 +28,7 @@ import { JobRequirementComparison } from '../components/candidates/JobRequiremen
 import { CandidateInsights } from '../components/candidates/CandidateInsights';
 import { QuestionStudioModal } from '../components/candidates/QuestionStudioModal';
 import { ResumeViewerModal } from '../components/candidates/ResumeViewerModal';
+import { formatIndianDate } from '../utils/formatters';
 import { ScheduleModal } from '../components/interviews/ScheduleModal';
 import { useRecruitment } from '../context/RecruitmentContext';
 
@@ -108,7 +109,7 @@ export function CandidateDetailsPage() {
         '------------------------------------------------------------',
         `${educationSection}\n`,
         '============================================================',
-        `Generated via HireSense Recruitment Platform (${new Date().toLocaleDateString()})`,
+        `Generated via HireSense Recruitment Platform (${formatIndianDate(new Date())})`,
         '============================================================'
       ].join('\n');
 
@@ -145,7 +146,7 @@ export function CandidateDetailsPage() {
           <span>Applied for</span>
           <strong className="text-slate-800 font-semibold">{candidate.appliedRole}</strong>
           <span>•</span>
-          <span>Applied {candidate.appliedDate}</span>
+          <span>Applied {formatIndianDate(candidate.appliedDate)}</span>
           <span>•</span>
           <span>{candidate.location}</span>
         </span>

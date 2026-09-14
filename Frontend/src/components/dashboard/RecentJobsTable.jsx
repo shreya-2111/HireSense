@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { formatIndianDate } from '../../utils/formatters';
 
 export function RecentJobsTable({ jobs = [] }) {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export function RecentJobsTable({ jobs = [] }) {
                 {getStatusBadge(job.status)}
               </td>
               <td className="py-2.5 px-4 text-slate-500 text-xs whitespace-nowrap">
-                {job.createdDate}
+                {formatIndianDate(job.createdDate)}
               </td>
               <td className="py-2.5 px-4 text-right whitespace-nowrap">
                 <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
