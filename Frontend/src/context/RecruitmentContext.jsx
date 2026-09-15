@@ -198,7 +198,38 @@ export function RecruitmentProvider({ children }) {
     }
   };
 
+  const updateJob = async (jobId, updatedJobData) => {
+    try {
+      const updated = await jobsService.updateJob(jobId, updatedJobData);
+      setJobs((prev) =>
+        prev.map((job) => (job.id === jobId ? { ...job, ...updated } : job))
+      );
+      addToast(`Job "${updated.title || 'opening'}" updated successfully!`, "success");
+      return updated;
+    } catch (err) {
+      addToast(err.message || "Failed to update job", "warning");
+      throw err;
+    }
+  };
+
+  const deleteJob = async (jobId) => {
+    let jobTitle = "Job";
+    const existing = jobs.find((j) => j.id === jobId);
+    if (existing) jobTitle = existing.title;
+
+    try {
+      await jobsService.deleteJob(jobId);
+      setJobs((prev) => prev.filter((job) => job.id !== jobId));
+      addToast(`Job "${jobTitle}" was permanently deleted.`, "info");
+      return true;
+    } catch (err) {
+      addToast(err.message || "Failed to delete job", "warning");
+      throw err;
+    }
+  };
+
   // Candidate Actions
+
   const updateCandidateStatus = async (candidateId, newStatus) => {
     const candidate = candidates.find((c) => c.id === candidateId);
     try {
@@ -392,6 +423,8 @@ export function RecruitmentProvider({ children }) {
         scheduledInterviewsCount,
         todayInterviewsCount,
         addJob,
+        updateJob,
+        deleteJob,
         updateJobStatus,
         updateCandidateStatus,
         addCandidate,

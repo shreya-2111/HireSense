@@ -26,7 +26,19 @@ export const authService = {
     return apiClient.get('/auth/me');
   },
 
+  async forgotPassword(email) {
+    return apiClient.post('/auth/forgot-password', { email });
+  },
+
+  async resetPassword(email, newPassword) {
+    return apiClient.post('/auth/reset-password', {
+      email,
+      new_password: newPassword,
+    });
+  },
+
   logout() {
     apiClient.clearToken();
   }
 };
+

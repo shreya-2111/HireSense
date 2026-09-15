@@ -1,15 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, IndianRupee, Calendar, UserCheck, Briefcase, XCircle, RotateCcw } from 'lucide-react';
+import { MapPin, Users, IndianRupee, Calendar, UserCheck, Briefcase, XCircle, RotateCcw, Edit3, Trash2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { formatSalary } from '../../utils/formatters';
 
-export function JobDetailModal({ job, isOpen, onClose }) {
+export function JobDetailModal({ job, isOpen, onClose, onEdit, onDelete }) {
   const navigate = useNavigate();
   const { updateJobStatus } = useRecruitment();
+
 
   if (!job) return null;
 
@@ -27,7 +28,7 @@ export function JobDetailModal({ job, isOpen, onClose }) {
       maxWidth="max-w-2xl"
       footer={
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {job.status === 'Active' ? (
               <Button
                 variant="dangerOutline"
@@ -47,6 +48,29 @@ export function JobDetailModal({ job, isOpen, onClose }) {
                 Reopen Requisition
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Edit3}
+              onClick={() => {
+                onClose();
+                if (onEdit) onEdit(job);
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="dangerOutline"
+              size="sm"
+              icon={Trash2}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={() => {
+                onClose();
+                if (onDelete) onDelete(job);
+              }}
+            >
+              Delete
+            </Button>
           </div>
 
           <div className="flex items-center gap-2">

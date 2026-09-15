@@ -5,6 +5,7 @@ from app.models.candidate import Candidate
 from app.models.resume import Resume, ResumeAnalysis
 from app.models.application import Application
 from app.models.interview import Interview, InterviewQuestion
+from app.models.skill_ontology import SkillAlias, SkillRelationship
 
 __all__ = [
     "User",
@@ -12,6 +13,8 @@ __all__ = [
     "Skill",
     "JobSkill",
     "CandidateSkill",
+    "SkillAlias",
+    "SkillRelationship",
     "Candidate",
     "Resume",
     "ResumeAnalysis",

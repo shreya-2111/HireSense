@@ -16,7 +16,9 @@ import {
   UserCheck,
   HelpCircle as QuestionIcon,
   XCircle,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles,
+  Link2
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
@@ -254,38 +256,67 @@ export function CandidateDetailsPage() {
                 {candidate.summary}
               </p>
 
-              {/* Skills Side-by-Side */}
+              {/* Multi-Layer Universal Skills Intelligence */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Matched Skills */}
+                {/* Direct & Inferred Matches */}
                 <div className="p-4 rounded-lg bg-emerald-50/30 border border-emerald-200/80 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      Matched Skills ({candidate.matchedSkills?.length || 0})
+                      Direct & Inferred Skills ({((candidate.directSkills?.length || 0) + (candidate.inferredSkills?.length || 0)) || candidate.matchedSkills?.length || 0})
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {candidate.matchedSkills?.map((skill) => (
-                      <SkillBadge key={skill} name={skill} type="matched" size="sm" />
-                    ))}
+                    {candidate.skillMatchDetails && candidate.skillMatchDetails.length > 0 ? (
+                      candidate.skillMatchDetails
+                        .filter((d) => d.match_type === 'direct' || d.match_type === 'inferred')
+                        .map((d) => (
+                          <SkillBadge
+                            key={d.required_skill}
+                            name={d.required_skill}
+                            type={d.match_type}
+                            evidence={d.evidence_skill !== d.required_skill ? d.evidence_skill : undefined}
+                            confidence={d.confidence}
+                            size="sm"
+                          />
+                        ))
+                    ) : (
+                      candidate.matchedSkills?.map((skill) => (
+                        <SkillBadge key={skill} name={skill} type="matched" size="sm" />
+                      ))
+                    )}
                   </div>
                 </div>
 
-                {/* Missing Skills */}
+                {/* Missing & Related Skills */}
                 <div className="p-4 rounded-lg bg-amber-50/30 border border-amber-200/80 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 text-amber-600" />
-                      Missing Skills ({candidate.missingSkills?.length || 0})
+                      Gaps & Related Skills ({(candidate.missingSkills?.length || 0) + (candidate.relatedSkills?.length || 0)})
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
+                    {/* Related skills */}
+                    {candidate.skillMatchDetails && candidate.skillMatchDetails.filter(d => d.match_type === 'related').map((d) => (
+                      <SkillBadge
+                        key={`rel-${d.required_skill}`}
+                        name={d.required_skill}
+                        type="related"
+                        evidence={d.evidence_skill}
+                        confidence={d.confidence}
+                        size="sm"
+                      />
+                    ))}
+                    {/* Missing skills */}
                     {candidate.missingSkills && candidate.missingSkills.length > 0 ? (
                       candidate.missingSkills.map((skill) => (
                         <SkillBadge key={skill} name={skill} type="missing" size="sm" />
                       ))
                     ) : (
-                      <span className="text-xs text-slate-400 italic">No missing requirements identified</span>
+                      !candidate.skillMatchDetails?.some(d => d.match_type === 'related') && (
+                        <span className="text-xs text-slate-400 italic">No missing requirements identified</span>
+                      )
                     )}
                   </div>
                 </div>

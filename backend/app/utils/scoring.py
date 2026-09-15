@@ -2,7 +2,8 @@ import re
 import difflib
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
+from app.services.skill_intelligence import match_skills_intelligently, normalize_skill
 
 # Map variations, synonyms, and common typos to normalized canonical skill names
 SYNONYM_MAP = {
@@ -233,31 +234,15 @@ def calculate_skill_overlap(
     candidate_text: str = ""
 ) -> Tuple[List[str], List[str], float]:
     """
-    Compare candidate skills with required job skills based on explicit candidate skills only.
+    Compare candidate skills with required job skills using Universal Skill Intelligence.
     Returns: (matched_skills, missing_skills, match_ratio_0_to_1)
     """
-    if not required_skills:
-        return candidate_skills, [], 1.0
-
-    cand_norm = {normalize_skill_name(s): s for s in candidate_skills}
-    req_norm = {normalize_skill_name(s): s for s in required_skills}
-
-    matched = []
-    missing = []
-
-    for r_norm, original_req in req_norm.items():
-        found = False
-        for c_norm, original_cand in cand_norm.items():
-            if is_skill_match(r_norm, c_norm):
-                matched.append(original_req)
-                found = True
-                break
-
-        if not found:
-            missing.append(original_req)
-
-    ratio = len(matched) / len(required_skills) if required_skills else 1.0
-    return matched, missing, float(ratio)
+    intel = match_skills_intelligently(
+        candidate_skills=candidate_skills,
+        required_skills=required_skills,
+        candidate_text=candidate_text
+    )
+    return intel["matched_skills"], intel["missing_skills"], float(intel["skill_ratio"])
 
 def calculate_comprehensive_match(
     candidate_skills: List[str],
@@ -267,11 +252,12 @@ def calculate_comprehensive_match(
     job_max_exp: int,
     candidate_text: str = "",
     job_description: str = "",
-    weights: Dict[str, float] = None
+    weights: Dict[str, float] = None,
+    db: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
-    Calculate deterministic matching score based on:
-    - Skill Match: 50%
+    Calculate deterministic matching score based on Universal AI Skill Intelligence:
+    - Skill Match: 50% (Direct: 100%, Inferred: 90%, Related: 40%, Missing: 0%)
     - Experience Match: 25%
     - Education Match: 15%
     - Relevance Match: 10%
@@ -284,13 +270,23 @@ def calculate_comprehensive_match(
             "relevance": 0.10
         }
  
-    # 1. Skill Score with semantic taxonomy & text concept scanning
-    matched_skills, missing_skills, skill_ratio = calculate_skill_overlap(
-        candidate_skills, 
-        required_skills, 
-        candidate_text=candidate_text
+    # 1. Skill Score with universal multi-layer intelligence
+    intel_res = match_skills_intelligently(
+        candidate_skills=candidate_skills,
+        required_skills=required_skills,
+        candidate_text=candidate_text,
+        db=db
     )
-    skill_score = skill_ratio * 100.0
+    matched_skills = intel_res["matched_skills"]
+    direct_skills = intel_res["direct_skills"]
+    inferred_skills = intel_res["inferred_skills"]
+    inferred_matches = intel_res["inferred_matches"]
+    related_skills = intel_res["related_skills"]
+    related_matches = intel_res["related_matches"]
+    missing_skills = intel_res["missing_skills"]
+    skill_match_summary = intel_res["skill_match_summary"]
+    skill_match_details = intel_res["skill_match_details"]
+    skill_score = intel_res["skill_score"]
 
     # 2. Experience Score
     if candidate_exp_years >= job_min_exp:
@@ -351,8 +347,14 @@ def calculate_comprehensive_match(
 
     # Strengths (strictly factual based on data)
     strengths = []
-    if matched_skills:
+    if direct_skills:
+        strengths.append(f"Demonstrated direct proficiency in required stack: {', '.join(direct_skills[:3])}")
+    if inferred_matches:
+        inf_desc = [f"{m['required_skill']} (via {m['evidence_skill']})" for m in inferred_matches[:2]]
+        strengths.append(f"Verified inferred competency: {', '.join(inf_desc)}")
+    elif matched_skills:
         strengths.append(f"Demonstrated proficiency in required stack: {', '.join(matched_skills[:4])}")
+
     if candidate_exp_years >= job_min_exp and job_min_exp > 0:
         strengths.append(f"{candidate_exp_years} years experience satisfies minimum requirements ({job_min_exp} yrs)")
     elif candidate_exp_years > 0:
@@ -364,8 +366,14 @@ def calculate_comprehensive_match(
     interview_focus = []
     if missing_skills:
         interview_focus.append(f"Evaluate practical exposure to: {', '.join(missing_skills[:4])}")
-    if matched_skills:
+    if inferred_matches:
+        for im in inferred_matches[:2]:
+            interview_focus.append(f"Probe transition from {im['evidence_skill']} to direct {im['required_skill']} implementation")
+    if direct_skills:
+        interview_focus.append(f"Probe hands-on architecture and depth with: {', '.join(direct_skills[:3])}")
+    elif matched_skills:
         interview_focus.append(f"Probe hands-on architecture and depth with: {', '.join(matched_skills[:3])}")
+
     if candidate_exp_years < job_min_exp:
         interview_focus.append(f"Assess project ownership and execution readiness for a {job_min_exp}+ year requirement")
     elif not missing_skills and matched_skills:
@@ -376,14 +384,21 @@ def calculate_comprehensive_match(
 
     summary = (
         f"Candidate scored {round(total_score)}% overall alignment. "
-        f"Demonstrates matching capabilities in {len(matched_skills)} of {len(required_skills) if required_skills else len(matched_skills)} core skills "
-        f"with {candidate_exp_years} years of relevant domain experience."
+        f"Skill coverage: {len(direct_skills)} Direct, {len(inferred_matches)} Inferred, {len(related_matches)} Related, {len(missing_skills)} Missing "
+        f"out of {len(required_skills) if required_skills else len(matched_skills)} required skills."
     )
 
     return {
         "match_score": total_score,
         "matched_skills": matched_skills,
+        "direct_skills": direct_skills,
+        "inferred_skills": inferred_skills,
+        "inferred_matches": inferred_matches,
+        "related_skills": related_skills,
+        "related_matches": related_matches,
         "missing_skills": missing_skills,
+        "skill_match_summary": skill_match_summary,
+        "skill_match_details": skill_match_details,
         "experience_match": experience_match,
         "education_match": education_match,
         "recommendation": recommendation,

@@ -25,8 +25,12 @@ class ResumeAnalysis(Base):
     job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
     summary = Column(Text, nullable=True)
     match_score = Column(Float, default=0.0, nullable=False)
-    matched_skills = Column(JSON, nullable=True) # list of matched skill names
+    matched_skills = Column(JSON, nullable=True) # list of direct / primary matched skill names
+    inferred_skills = Column(JSON, nullable=True) # list of inferred skill names
+    related_skills = Column(JSON, nullable=True) # list of related/partial skill names
     missing_skills = Column(JSON, nullable=True) # list of missing skill names
+    skill_match_details = Column(JSON, nullable=True) # list of rich skill match explanation objects
+    skill_match_summary = Column(JSON, nullable=True) # dictionary with counts: direct, inferred, related, missing
     experience_match = Column(Boolean, default=False, nullable=False)
     education_match = Column(Boolean, default=False, nullable=False)
     recommendation = Column(String(50), default="Review", nullable=False) # Shortlist, Interview, Maybe, Reject, Review

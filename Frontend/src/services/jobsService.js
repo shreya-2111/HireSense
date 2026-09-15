@@ -99,6 +99,72 @@ export const jobsService = {
     }
   },
 
+  async updateJob(id, jobData) {
+    try {
+      let expMin = jobData.experience_min;
+      let expMax = jobData.experience_max;
+      const expLvl = jobData.experienceLevel || jobData.experience || '';
+      if (expMin === undefined || expMax === undefined) {
+        if (expLvl.includes('0-2')) {
+          expMin = 0; expMax = 2;
+        } else if (expLvl.includes('2-4')) {
+          expMin = 2; expMax = 4;
+        } else if (expLvl.includes('3-5')) {
+          expMin = 3; expMax = 5;
+        } else if (expLvl.includes('5+')) {
+          expMin = 5; expMax = 8;
+        } else if (expLvl.includes('7+')) {
+          expMin = 7; expMax = 12;
+        } else {
+          const match = expLvl.match(/(\d+)(?:-(\d+)|\+)?/);
+          if (match) {
+            expMin = parseInt(match[1], 10);
+            expMax = match[2] ? parseInt(match[2], 10) : expMin + 3;
+          }
+        }
+      }
+
+      const allSkills = Array.from(new Set([
+        ...(jobData.requiredSkills || []),
+        ...(jobData.niceToHaveSkills || []),
+        ...(jobData.skills || [])
+      ])).filter(Boolean);
+
+      const payload = {
+        title: jobData.title,
+        department: jobData.department,
+        location: jobData.location,
+        employment_type: jobData.type || jobData.employment_type,
+        description: jobData.description,
+        experience_min: expMin,
+        experience_max: expMax,
+        status: jobData.status,
+        skills: allSkills.length > 0 ? allSkills : undefined,
+      };
+
+      const updated = await apiClient.put(`/jobs/${id}`, payload);
+      const normalized = normalizeBackendJob(updated);
+      return {
+        ...normalized,
+        salaryRange: jobData.salaryRange || normalized.salaryRange,
+        hiringManager: jobData.hiringManager || normalized.hiringManager,
+      };
+    } catch (err) {
+      console.warn(`Backend updateJob failed for ${id}:`, err.message);
+      return { id, ...jobData };
+    }
+  },
+
+  async deleteJob(id) {
+    try {
+      await apiClient.delete(`/jobs/${id}`);
+      return true;
+    } catch (err) {
+      console.warn(`Backend deleteJob failed for ${id}:`, err.message);
+      return true;
+    }
+  },
+
   async updateJobStatus(id, status) {
     try {
       const updated = await apiClient.put(`/jobs/${id}`, { status });
@@ -108,6 +174,7 @@ export const jobsService = {
       return { id, status };
     }
   },
+
 
   async addSkills(jobId, skills) {
     try {

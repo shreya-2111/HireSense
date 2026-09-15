@@ -180,6 +180,13 @@ class CandidateService:
             resume_name = c.resumes[0].file_name if c.resumes else None
             resume_id = c.resumes[0].id if c.resumes else None
 
+            analysis = None
+            if c.resumes and c.resumes[0].analyses:
+                if primary_app and primary_app.job_id:
+                    analysis = next((a for a in c.resumes[0].analyses if a.job_id == primary_app.job_id), c.resumes[0].analyses[0])
+                else:
+                    analysis = c.resumes[0].analyses[0]
+
             results.append({
                 "id": c.id,
                 "name": c.name,
@@ -193,6 +200,11 @@ class CandidateService:
                 "summary": c.summary,
                 "skills": skills,
                 "match_score": primary_app.match_score if primary_app else 0.0,
+                "matched_skills": analysis.matched_skills if (analysis and analysis.matched_skills) else skills[:4],
+                "inferred_skills": analysis.inferred_skills if (analysis and analysis.inferred_skills) else [],
+                "related_skills": analysis.related_skills if (analysis and analysis.related_skills) else [],
+                "skill_match_summary": analysis.skill_match_summary if analysis else None,
+                "skill_match_details": analysis.skill_match_details if analysis else [],
                 "status": primary_app.status if primary_app else "Applied",
                 "recommendation": primary_app.recommendation if primary_app else "Review",
                 "applied_job": primary_app.job.title if primary_app and primary_app.job else None,
@@ -218,6 +230,13 @@ class CandidateService:
         resume_name = c.resumes[0].file_name if c.resumes else None
         resume_id = c.resumes[0].id if c.resumes else None
 
+        analysis = None
+        if c.resumes and c.resumes[0].analyses:
+            if primary_app and primary_app.job_id:
+                analysis = next((a for a in c.resumes[0].analyses if a.job_id == primary_app.job_id), c.resumes[0].analyses[0])
+            else:
+                analysis = c.resumes[0].analyses[0]
+
         db.commit()
 
         return {
@@ -233,6 +252,11 @@ class CandidateService:
             "summary": c.summary,
             "skills": skills,
             "match_score": primary_app.match_score if primary_app else 0.0,
+            "matched_skills": analysis.matched_skills if (analysis and analysis.matched_skills) else skills[:4],
+            "inferred_skills": analysis.inferred_skills if (analysis and analysis.inferred_skills) else [],
+            "related_skills": analysis.related_skills if (analysis and analysis.related_skills) else [],
+            "skill_match_summary": analysis.skill_match_summary if analysis else None,
+            "skill_match_details": analysis.skill_match_details if analysis else [],
             "status": primary_app.status if primary_app else "Applied",
             "recommendation": primary_app.recommendation if primary_app else "Review",
             "applied_job": primary_app.job.title if primary_app and primary_app.job else None,

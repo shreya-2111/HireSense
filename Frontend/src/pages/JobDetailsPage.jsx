@@ -5,7 +5,9 @@ import {
   XCircle,
   RotateCcw,
   UserPlus,
-  ChevronRight
+  ChevronRight,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
@@ -15,6 +17,8 @@ import { MatchScoreBadge } from '../components/candidates/MatchScoreBadge';
 import { Avatar } from '../components/ui/Avatar';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
+import { JobEditModal } from '../components/jobs/JobEditModal';
+import { JobDeleteConfirmModal } from '../components/jobs/JobDeleteConfirmModal';
 import { useRecruitment } from '../context/RecruitmentContext';
 
 export function JobDetailsPage() {
@@ -24,6 +28,9 @@ export function JobDetailsPage() {
 
   const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
   const [selectedCandToAttach, setSelectedCandToAttach] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
 
   const job = jobs.find((j) => String(j.id) === String(id)) || jobs[0];
 
@@ -91,6 +98,25 @@ export function JobDetailsPage() {
               Reopen Requisition
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            icon={Edit3}
+            onClick={() => setIsEditModalOpen(true)}
+          >
+            Edit Job
+          </Button>
+
+          <Button
+            variant="dangerOutline"
+            size="sm"
+            icon={Trash2}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+            onClick={() => setIsDeleteModalOpen(true)}
+          >
+            Delete
+          </Button>
 
           <Button
             variant="primary"
@@ -296,6 +322,21 @@ export function JobDetailsPage() {
           </Select>
         </div>
       </Modal>
+
+      {/* Edit Job Modal */}
+      <JobEditModal
+        job={job}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <JobDeleteConfirmModal
+        job={job}
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onDeleted={() => navigate('/jobs')}
+      />
     </PageContainer>
   );
 }

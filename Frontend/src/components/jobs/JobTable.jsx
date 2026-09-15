@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Eye, XCircle, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Users, Eye, Edit3, Trash2, XCircle, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/Table';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { JobEditModal } from './JobEditModal';
+import { JobDeleteConfirmModal } from './JobDeleteConfirmModal';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { formatIndianDate } from '../../utils/formatters';
 
 export function JobTable({ jobs = [], onSelectJob }) {
   const navigate = useNavigate();
   const { updateJobStatus } = useRecruitment();
+  const [editingJob, setEditingJob] = useState(null);
+  const [deletingJob, setDeletingJob] = useState(null);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -35,7 +39,7 @@ export function JobTable({ jobs = [], onSelectJob }) {
             <TableHead>Candidates</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
-            <TableHead className="text-right">Action</TableHead>
+            <TableHead className="text-center">Action</TableHead>
           </tr>
         </TableHeader>
         <TableBody>
@@ -52,7 +56,7 @@ export function JobTable({ jobs = [], onSelectJob }) {
                     {job.title}
                   </span>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
-                    <span>{job.type}</span>
+                    <span>{job.type || job.employment_type || 'Remote'}</span>
                     <span>•</span>
                     <span>{job.experienceLevel || job.experience}</span>
                   </div>
@@ -88,47 +92,10 @@ export function JobTable({ jobs = [], onSelectJob }) {
                 </div>
               </TableCell>
 
-              {/* Status & Quick Toggle */}
+              {/* Status Badge Only (Removed close option from status line) */}
               <TableCell>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(job.status)}
-                  {job.status === 'Active' ? (
-                    <button
-                      type="button"
-                      title="Close this job opening"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateJobStatus(job.id, 'Closed');
-                      }}
-                      className="text-[11px] text-slate-400 hover:text-red-600 font-medium transition-colors"
-                    >
-                      Close
-                    </button>
-                  ) : job.status === 'Closed' ? (
-                    <button
-                      type="button"
-                      title="Reopen this job opening"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateJobStatus(job.id, 'Active');
-                      }}
-                      className="text-[11px] text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                    >
-                      Reopen
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      title="Publish as active job"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateJobStatus(job.id, 'Active');
-                      }}
-                      className="text-[11px] text-emerald-600 hover:text-emerald-800 font-medium transition-colors"
-                    >
-                      Publish
-                    </button>
-                  )}
                 </div>
               </TableCell>
 
@@ -139,34 +106,28 @@ export function JobTable({ jobs = [], onSelectJob }) {
                 </span>
               </TableCell>
 
-              {/* Actions */}
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+              {/* Action Column with Close, Edit, Delete Options */}
+              <TableCell className="text-center">
+                <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="text-xs px-2.5 py-1"
                     onClick={() => onSelectJob ? onSelectJob(job) : null}
                   >
                     Details
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                    onClick={() => navigate(`/candidates?job=${job.id}`)}
-                  >
-                    Candidates
-                  </Button>
 
-                  {/* Close / Reopen Action Button */}
+                  {/* Close / Reopen Action Option */}
                   {job.status === 'Active' ? (
                     <Button
                       size="sm"
                       variant="dangerOutline"
                       className="text-xs px-2.5 py-1"
                       onClick={() => updateJobStatus(job.id, 'Closed')}
+                      title="Close Job"
                     >
-                      Close Job
+                      Close
                     </Button>
                   ) : (
                     <Button
@@ -174,16 +135,56 @@ export function JobTable({ jobs = [], onSelectJob }) {
                       variant="successOutline"
                       className="text-xs px-2.5 py-1"
                       onClick={() => updateJobStatus(job.id, 'Active')}
+                      title="Reopen Job"
                     >
                       Reopen
                     </Button>
                   )}
+
+                  {/* Edit Option */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={Edit3}
+                    className="text-xs px-2 py-1 text-slate-700 hover:text-blue-600 hover:border-blue-300"
+                    onClick={() => setEditingJob(job)}
+                    title="Edit & Update Job"
+                  >
+                    Edit
+                  </Button>
+
+                  {/* Delete Option */}
+                  <Button
+                    size="sm"
+                    variant="dangerOutline"
+                    icon={Trash2}
+                    className="text-xs px-2 py-1 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                    onClick={() => setDeletingJob(job)}
+                    title="Delete Job"
+                  >
+                    Delete
+                  </Button>
                 </div>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      {/* Edit Job Modal */}
+      <JobEditModal
+        job={editingJob}
+        isOpen={Boolean(editingJob)}
+        onClose={() => setEditingJob(null)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <JobDeleteConfirmModal
+        job={deletingJob}
+        isOpen={Boolean(deletingJob)}
+        onClose={() => setDeletingJob(null)}
+      />
     </div>
   );
 }
+

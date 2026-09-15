@@ -56,7 +56,14 @@ class ResumeAnalysisResponse(BaseModel):
     match_score: float
     summary: str
     matched_skills: List[str] = []
+    direct_skills: List[str] = []
+    inferred_skills: List[str] = []
+    inferred_matches: List[Dict[str, Any]] = []
+    related_skills: List[str] = []
+    related_matches: List[Dict[str, Any]] = []
     missing_skills: List[str] = []
+    skill_match_summary: Optional[Dict[str, Any]] = None
+    skill_match_details: List[Dict[str, Any]] = []
     experience_match: bool = True
     education_match: bool = True
     recommendation: str = "Review"

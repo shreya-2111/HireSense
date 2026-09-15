@@ -21,7 +21,6 @@ export function RegisterPage() {
   const [role, setRole] = useState('Senior Technical Recruiter');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,10 +32,6 @@ export function RegisterPage() {
     }
     if (password.trim().length < 6) {
       setError('Password must be at least 6 characters.');
-      return;
-    }
-    if (!agreeTerms) {
-      setError('Please agree to the terms to proceed.');
       return;
     }
     try {
@@ -176,19 +171,6 @@ export function RegisterPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-start">
-              <input
-                id="terms"
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="h-4 w-4 mt-0.5 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
-              />
-              <label htmlFor="terms" className="ml-2 block text-xs text-slate-600 leading-relaxed">
-                I agree to the HireSense Recruiter Terms of Service.
-              </label>
             </div>
 
             <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full justify-center py-2.5">

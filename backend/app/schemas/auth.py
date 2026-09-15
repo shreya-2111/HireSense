@@ -11,6 +11,18 @@ class RegisterRequest(BaseModel):
     password: str
     role: Optional[str] = "recruiter"
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    new_password: str
+    token: Optional[str] = None
+
+class ResetPasswordResponse(BaseModel):
+    message: str
+    email: str
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -19,3 +31,4 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
     user_id: Optional[int] = None
+

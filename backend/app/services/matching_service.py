@@ -59,7 +59,7 @@ class MatchingService:
         candidate_exp = candidate.experience_years if candidate else parsed_details.get("experience_years", 0)
         cand_edu = candidate.education if (candidate and candidate.education) else parsed_details.get("education")
 
-        # Run scoring calculation
+        # Run scoring calculation with Universal Skill Intelligence
         match_result = calculate_comprehensive_match(
             candidate_skills=candidate_skills,
             required_skills=job_skills,
@@ -67,7 +67,8 @@ class MatchingService:
             job_min_exp=job.experience_min,
             job_max_exp=job.experience_max,
             candidate_text=resume_text or "",
-            job_description=job.description or ""
+            job_description=job.description or "",
+            db=db
         )
 
         # Save analysis record to database if resume exists
@@ -82,7 +83,11 @@ class MatchingService:
                 existing_analysis.match_score = match_result["match_score"]
                 existing_analysis.summary = match_result["summary"]
                 existing_analysis.matched_skills = match_result["matched_skills"]
+                existing_analysis.inferred_skills = match_result.get("inferred_skills", [])
+                existing_analysis.related_skills = match_result.get("related_skills", [])
                 existing_analysis.missing_skills = match_result["missing_skills"]
+                existing_analysis.skill_match_details = match_result.get("skill_match_details", [])
+                existing_analysis.skill_match_summary = match_result.get("skill_match_summary", {})
                 existing_analysis.experience_match = match_result["experience_match"]
                 existing_analysis.education_match = match_result["education_match"]
                 existing_analysis.recommendation = match_result["recommendation"]
@@ -94,7 +99,11 @@ class MatchingService:
                     match_score=match_result["match_score"],
                     summary=match_result["summary"],
                     matched_skills=match_result["matched_skills"],
+                    inferred_skills=match_result.get("inferred_skills", []),
+                    related_skills=match_result.get("related_skills", []),
                     missing_skills=match_result["missing_skills"],
+                    skill_match_details=match_result.get("skill_match_details", []),
+                    skill_match_summary=match_result.get("skill_match_summary", {}),
                     experience_match=match_result["experience_match"],
                     education_match=match_result["education_match"],
                     recommendation=match_result["recommendation"]
@@ -174,7 +183,14 @@ class MatchingService:
             "match_score": match_result["match_score"],
             "summary": match_result["summary"],
             "matched_skills": match_result["matched_skills"],
+            "direct_skills": match_result.get("direct_skills", []),
+            "inferred_skills": match_result.get("inferred_skills", []),
+            "inferred_matches": match_result.get("inferred_matches", []),
+            "related_skills": match_result.get("related_skills", []),
+            "related_matches": match_result.get("related_matches", []),
             "missing_skills": match_result["missing_skills"],
+            "skill_match_summary": match_result.get("skill_match_summary", {}),
+            "skill_match_details": match_result.get("skill_match_details", []),
             "experience_match": match_result["experience_match"],
             "education_match": match_result["education_match"],
             "recommendation": match_result["recommendation"],

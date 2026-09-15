@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HireSenseLogo } from '../components/ui/HireSenseLogo';
 import { useRecruitment } from '../context/RecruitmentContext';
+import { ForgotPasswordModal } from '../components/auth/ForgotPasswordModal';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -20,7 +21,10 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
+  const [successInfo, setSuccessInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,6 +67,12 @@ export function LoginPage() {
             </div>
           )}
 
+          {successInfo && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium">
+              {successInfo}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -88,6 +98,17 @@ export function LoginPage() {
                 <label className="block text-xs font-semibold text-slate-700">
                   Password
                 </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError('');
+                    setSuccessInfo('');
+                    setIsForgotModalOpen(true);
+                  }}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Forgot password?
+                </button>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -137,6 +158,17 @@ export function LoginPage() {
           </p>
         </div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        initialEmail={email}
+        onPasswordResetSuccess={(updatedEmail, updatedPassword) => {
+          setEmail(updatedEmail);
+          setPassword(updatedPassword);
+          setSuccessInfo('Password reset successfully. You can now click Sign In.');
+        }}
+      />
     </div>
   );
 }

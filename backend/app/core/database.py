@@ -59,6 +59,15 @@ def get_db():
 
 def init_db():
     """Initialize all database tables from SQLAlchemy models."""
-    import app.models # ensure all models are registered
+    import app.models  # ensure all models are registered
     Base.metadata.create_all(bind=engine)
+
+    # Safely ensure new columns exist on resume_analyses if table pre-existed
+    with engine.connect() as conn:
+        for col_name in ["inferred_skills", "related_skills", "skill_match_details", "skill_match_summary"]:
+            try:
+                conn.execute(text(f"ALTER TABLE resume_analyses ADD COLUMN {col_name} JSON NULL"))
+                conn.commit()
+            except Exception:
+                pass
 

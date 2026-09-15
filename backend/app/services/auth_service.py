@@ -30,6 +30,28 @@ class AuthService:
             return None
         return user
 
+    def forgot_password(self, db: Session, email: str) -> dict:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise ValueError("No account found with this email address")
+        return {
+            "message": f"Password reset instructions and verification code prepared for {email}",
+            "email": email
+        }
+
+    def reset_password(self, db: Session, email: str, new_password: str) -> User:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise ValueError("No account found with this email address")
+        if len(new_password) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        
+        user.password_hash = get_password_hash(new_password)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
     def create_user_token(self, user: User) -> dict:
         access_token = create_access_token(
             subject=user.email,
@@ -47,3 +69,4 @@ class AuthService:
         }
 
 auth_service = AuthService()
+

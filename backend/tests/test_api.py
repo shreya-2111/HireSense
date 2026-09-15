@@ -47,6 +47,32 @@ def test_auth_registration_and_login(client):
     bad_me = client.get("/api/v1/auth/me")
     assert bad_me.status_code == 401
 
+    # 7. Forgot password for existing email
+    forgot_res = client.post("/api/v1/auth/forgot-password", json={"email": "jane@example.com"})
+    assert forgot_res.status_code == 200
+    assert forgot_res.json()["email"] == "jane@example.com"
+
+    # 8. Forgot password for non-existent email
+    bad_forgot = client.post("/api/v1/auth/forgot-password", json={"email": "notfound@example.com"})
+    assert bad_forgot.status_code == 404
+
+    # 9. Reset password
+    reset_res = client.post("/api/v1/auth/reset-password", json={
+        "email": "jane@example.com",
+        "new_password": "newstrongpassword456"
+    })
+    assert reset_res.status_code == 200
+
+    # 10. Old password fails
+    old_login = client.post("/api/v1/auth/login", json={"email": "jane@example.com", "password": "strongpassword123"})
+    assert old_login.status_code == 401
+
+    # 11. New password succeeds
+    new_login = client.post("/api/v1/auth/login", json={"email": "jane@example.com", "password": "newstrongpassword456"})
+    assert new_login.status_code == 200
+    assert "access_token" in new_login.json()
+
+
 def test_job_crud_and_skills(client):
     # 1. Create Job
     job_payload = {

@@ -5,6 +5,8 @@ import { PageContainer } from '../components/layout/PageContainer';
 import { JobTable } from '../components/jobs/JobTable';
 import { JobCard } from '../components/jobs/JobCard';
 import { JobDetailModal } from '../components/jobs/JobDetailModal';
+import { JobEditModal } from '../components/jobs/JobEditModal';
+import { JobDeleteConfirmModal } from '../components/jobs/JobDeleteConfirmModal';
 import { Tabs } from '../components/ui/Tabs';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -18,6 +20,9 @@ export function JobsPage() {
   const [selectedStatusTab, setSelectedStatusTab] = useState('all');
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
   const [activeJobModal, setActiveJobModal] = useState(null);
+  const [editingJob, setEditingJob] = useState(null);
+  const [deletingJob, setDeletingJob] = useState(null);
+
 
   // Tab counts
   const allCount = jobs.length;
@@ -143,6 +148,22 @@ export function JobsPage() {
         job={activeJobModal}
         isOpen={Boolean(activeJobModal)}
         onClose={() => setActiveJobModal(null)}
+        onEdit={(job) => setEditingJob(job)}
+        onDelete={(job) => setDeletingJob(job)}
+      />
+
+      {/* Edit Job Modal */}
+      <JobEditModal
+        job={editingJob}
+        isOpen={Boolean(editingJob)}
+        onClose={() => setEditingJob(null)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <JobDeleteConfirmModal
+        job={deletingJob}
+        isOpen={Boolean(deletingJob)}
+        onClose={() => setDeletingJob(null)}
       />
     </PageContainer>
   );
