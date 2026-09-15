@@ -15,7 +15,8 @@ class MatchingService:
         job_id: int,
         resume_id: Optional[int] = None,
         candidate_id: Optional[int] = None,
-        resume_text: Optional[str] = None
+        resume_text: Optional[str] = None,
+        required_skills: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Analyze a candidate resume against a job, save the analysis, and generate AI interview questions.
@@ -25,7 +26,12 @@ class MatchingService:
             raise ValueError(f"Job with ID {job_id} not found")
 
         # Get job required skills
-        job_skills = [js.skill.name for js in job.skills if js.skill]
+        db_job_skills = [js.skill.name for js in job.skills if js.skill]
+        if required_skills and len(required_skills) > 0:
+            # Merge explicit required skills if provided
+            job_skills = list(dict.fromkeys(required_skills + db_job_skills))
+        else:
+            job_skills = db_job_skills
 
         # Fetch resume / candidate
         resume = None
@@ -97,7 +103,7 @@ class MatchingService:
                 db.flush()
                 analysis_id = new_analysis.id
 
-        # Update candidate application match score if exists
+        # Update or create candidate application record with real match score
         if candidate:
             application = db.query(Application).filter(
                 Application.candidate_id == candidate.id,
@@ -106,6 +112,18 @@ class MatchingService:
             if application:
                 application.match_score = match_result["match_score"]
                 application.recommendation = match_result["recommendation"]
+            else:
+                application = Application(
+                    candidate_id=candidate.id,
+                    job_id=job.id,
+                    status="Applied",
+                    match_score=match_result["match_score"],
+                    recommendation=match_result["recommendation"]
+                )
+                db.add(application)
+
+            if not candidate.current_role or candidate.current_role in ['Applicant', 'Candidate', 'General Application']:
+                candidate.current_role = job.title
 
         db.commit()
 
@@ -166,5 +184,5 @@ class MatchingService:
             "ai_questions": ai_questions,
             "breakdown": match_result["breakdown"]
         }
-
+ 
 matching_service = MatchingService()

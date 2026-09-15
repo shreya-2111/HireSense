@@ -19,7 +19,7 @@ def test_auth_registration_and_login(client):
     data = reg_res.json()
     assert "access_token" in data
     assert data["user"]["email"] == "jane@example.com"
-
+ 
     # 2. Duplicate registration rejection
     dup_res = client.post("/api/v1/auth/register", json=reg_payload)
     assert dup_res.status_code == 400

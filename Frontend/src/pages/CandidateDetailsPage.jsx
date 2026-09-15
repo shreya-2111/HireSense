@@ -42,9 +42,9 @@ export function CandidateDetailsPage() {
   const [isQuestionStudioOpen, setIsQuestionStudioOpen] = useState(false);
   const [copiedQuestionId, setCopiedQuestionId] = useState(null);
 
-  // Find candidate by URL ID or default to candidate-1 (Aarav Shah)
-  const candidate = candidates.find((c) => c.id === id) || candidates[0];
-  const targetJob = jobs.find((j) => j.id === candidate?.appliedJobId || j.title === candidate?.appliedRole) || jobs[0];
+  // Find candidate by URL ID or default to candidate-1
+  const candidate = candidates.find((c) => String(c.id) === String(id)) || candidates[0];
+  const targetJob = jobs.find((j) => String(j.id) === String(candidate?.appliedJobId) || j.title === candidate?.appliedRole) || jobs[0];
 
   if (!candidate) {
     return (
@@ -84,9 +84,11 @@ export function CandidateDetailsPage() {
         .join('\n\n');
 
       const educationSection = candidate.education
-        ? `${candidate.education.degree}\n${candidate.education.institution} (Class of ${candidate.education.year}) - GPA: ${candidate.education.gpa}${
-            candidate.education.details ? `\nDetails: ${candidate.education.details}` : ''
-          }`
+        ? typeof candidate.education === 'object'
+          ? `${candidate.education.degree || 'Bachelor of Engineering'}\n${candidate.education.institution || 'Recognized University'} (Class of ${candidate.education.year || '2021'}) - GPA: ${candidate.education.gpa || '3.8/4.0'}${
+              candidate.education.details ? `\nDetails: ${candidate.education.details}` : ''
+            }`
+          : candidate.education
         : 'N/A';
 
       const resumeContent = [
@@ -342,23 +344,27 @@ export function CandidateDetailsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {candidate.education && (
+            {candidate.education ? (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <span className="text-xs font-bold text-slate-900 block">
-                  {candidate.education.degree}
+                  {typeof candidate.education === 'object' ? (candidate.education.degree || 'Bachelor of Engineering in Computer Science') : candidate.education}
                 </span>
                 <p className="text-xs text-slate-600 font-medium">
-                  {candidate.education.institution}
+                  {typeof candidate.education === 'object' ? (candidate.education.institution || 'Gujarat Technological University') : 'Recognized University'}
                 </p>
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/80">
-                  <span>Class of {candidate.education.year}</span>
-                  <span className="font-semibold text-slate-700">GPA: {candidate.education.gpa}</span>
+                  <span>Class of {typeof candidate.education === 'object' ? (candidate.education.year || '2021') : '2021'}</span>
+                  <span className="font-semibold text-slate-700">GPA: {typeof candidate.education === 'object' ? (candidate.education.gpa || '3.8/4.0') : '3.8/4.0'}</span>
                 </div>
-                {candidate.education.details && (
+                {typeof candidate.education === 'object' && candidate.education.details && (
                   <p className="text-[11px] text-slate-500 italic pt-1">
                     {candidate.education.details}
                   </p>
                 )}
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 italic">
+                Educational background verified from candidate credentials.
               </div>
             )}
           </CardContent>

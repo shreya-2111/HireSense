@@ -58,6 +58,12 @@ export const jobsService = {
         }
       }
 
+      const allSkills = Array.from(new Set([
+        ...(jobData.requiredSkills || []),
+        ...(jobData.niceToHaveSkills || []),
+        ...(jobData.skills || [])
+      ])).filter(Boolean);
+
       const payload = {
         title: jobData.title,
         department: jobData.department || 'Engineering',
@@ -67,7 +73,7 @@ export const jobsService = {
         experience_min: expMin,
         experience_max: expMax,
         status: jobData.status || 'Active',
-        skills: jobData.requiredSkills || jobData.skills || [],
+        skills: allSkills.length > 0 ? allSkills : (jobData.requiredSkills || []),
       };
       const created = await apiClient.post('/jobs', payload);
       const normalized = normalizeBackendJob(created);
@@ -111,6 +117,17 @@ export const jobsService = {
       console.warn(`Backend addSkills failed for ${jobId}:`, err.message);
       return null;
     }
+  },
+
+  async parseJobDescriptionDoc(file, text = null) {
+    const formData = new FormData();
+    if (file) {
+      formData.append('file', file);
+    }
+    if (text) {
+      formData.append('text', text);
+    }
+    return await apiClient.post('/jobs/parse-jd', formData);
   },
 
   async getJobCandidates(jobId) {

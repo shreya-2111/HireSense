@@ -24,7 +24,8 @@ def analyze_resume(req: ResumeAnalysisRequest, db: Session = Depends(get_db)):
             job_id=req.job_id,
             resume_id=req.resume_id,
             candidate_id=req.candidate_id,
-            resume_text=req.resume_text
+            resume_text=req.resume_text,
+            required_skills=req.required_skills
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

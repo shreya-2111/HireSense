@@ -31,6 +31,7 @@ class ResumeAnalysisRequest(BaseModel):
     candidate_id: Optional[int] = None
     job_id: int
     resume_text: Optional[str] = None
+    required_skills: Optional[List[str]] = None
 
 class ResumeAnalysisResponse(BaseModel):
     id: Optional[int] = None

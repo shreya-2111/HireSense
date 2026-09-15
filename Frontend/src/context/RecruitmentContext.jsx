@@ -208,7 +208,7 @@ export function RecruitmentProvider({ children }) {
     }
 
     setCandidates((prev) =>
-      prev.map((c) => (c.id === candidateId ? { ...c, status: newStatus } : c))
+      prev.map((c) => (String(c.id) === String(candidateId) ? { ...c, status: newStatus } : c))
     );
     
     const candidateName = candidate ? candidate.name : "Candidate";
@@ -304,7 +304,7 @@ export function RecruitmentProvider({ children }) {
 
     setCandidates((prev) =>
       prev.map((c) => {
-        if (c.id === candidateId) {
+        if (String(c.id) === String(candidateId)) {
           candidateName = c.name;
           oldJobId = c.appliedJobId;
           return {
@@ -319,10 +319,10 @@ export function RecruitmentProvider({ children }) {
 
     setJobs((prev) =>
       prev.map((j) => {
-        if (j.id === targetJobId) {
+        if (String(j.id) === String(targetJobId)) {
           return { ...j, candidatesCount: (j.candidatesCount || 0) + 1 };
         }
-        if (oldJobId && j.id === oldJobId && j.id !== targetJobId) {
+        if (oldJobId && String(j.id) === String(oldJobId) && String(j.id) !== String(targetJobId)) {
           return { ...j, candidatesCount: Math.max(0, (j.candidatesCount || 1) - 1) };
         }
         return j;

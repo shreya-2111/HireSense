@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from typing import Dict, Any, Optional
 from fastapi import UploadFile, HTTPException
@@ -27,7 +28,7 @@ class ResumeService:
                 db.rollback()
                 skill = db.query(Skill).filter((Skill.normalized_name == norm) | (Skill.name == clean_name)).first()
         return skill
-
+ 
     async def process_resume_upload(
         self,
         db: Session,

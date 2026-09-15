@@ -22,15 +22,10 @@ def setup_test_job():
         "experience_min": 3,
         "experience_max": 8,
         "description": "Seeking an experienced Lead Python Developer to architect high-performance asynchronous REST APIs in FastAPI, manage MySQL databases, and deploy with Docker microservices.",
-        "skills": [
-            {"name": "Python", "importance": "required"},
-            {"name": "FastAPI", "importance": "required"},
-            {"name": "MySQL", "importance": "required"},
-            {"name": "Docker", "importance": "required"}
-        ]
+        "skills": ["Python", "FastAPI", "MySQL", "Docker"]
     }
     res = client.post("/api/v1/jobs", json=job_payload)
-    if res.status_code == 201:
+    if res.status_code in [200, 201]:
         return res.json()["id"]
     
     # Fallback to listing jobs

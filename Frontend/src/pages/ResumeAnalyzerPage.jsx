@@ -20,15 +20,19 @@ import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { useRecruitment } from '../context/RecruitmentContext';
 import { resumeService } from '../services/resumeService';
+import { jobsService } from '../services/jobsService';
 
 export function ResumeAnalyzerPage() {
   const navigate = useNavigate();
   const { jobs, addCandidate } = useRecruitment();
+  const customJdInputRef = React.useRef(null);
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id || '1');
   const [useCustomJob, setUseCustomJob] = useState(false);
   const [customJobText, setCustomJobText] = useState('');
+  const [isParsingCustomJd, setIsParsingCustomJd] = useState(false);
+  const [customJdFilename, setCustomJdFilename] = useState('');
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -190,15 +194,72 @@ export function ResumeAnalyzerPage() {
                   )}
                 </div>
               ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Custom Job Description & Skill Requirements
-                  </label>
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    ref={customJdInputRef}
+                    className="hidden"
+                    accept=".pdf,.docx,.doc,.txt,.md"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        try {
+                          setIsParsingCustomJd(true);
+                          setCustomJdFilename(file.name);
+                          const parsed = await jobsService.parseJobDescriptionDoc(file);
+                          if (parsed) {
+                            const skills = [
+                              ...(parsed.required_skills || []),
+                              ...(parsed.nice_to_have_skills || [])
+                            ];
+                            const textSummary = skills.length > 0
+                              ? skills.join(', ')
+                              : parsed.description || '';
+                            setCustomJobText(textSummary);
+                          }
+                        } catch (err) {
+                          console.error('Failed to parse custom JD:', err);
+                        } finally {
+                          setIsParsingCustomJd(false);
+                        }
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Custom Job Description & Skill Requirements
+                    </label>
+                    <button
+                      type="button"
+                      disabled={isParsingCustomJd}
+                      onClick={() => customJdInputRef.current?.click()}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 hover:underline"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>{isParsingCustomJd ? 'Extracting JD skills...' : 'Upload JD File (PDF/DOCX/TXT)'}</span>
+                    </button>
+                  </div>
+                  {customJdFilename && (
+                    <div className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 flex items-center justify-between">
+                      <span>✓ Extracted skills from <strong>{customJdFilename}</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomJdFilename('');
+                          setCustomJobText('');
+                          if (customJdInputRef.current) customJdInputRef.current.value = '';
+                        }}
+                        className="text-slate-400 hover:text-slate-600 font-bold ml-2"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                   <textarea
                     rows={4}
                     value={customJobText}
                     onChange={(e) => setCustomJobText(e.target.value)}
-                    placeholder="Enter required skills (comma separated, e.g. React, Python, FastAPI, MySQL)..."
+                    placeholder="Enter required skills (comma separated, e.g. React, Python, FastAPI, MySQL) or upload a JD document..."
                     className="w-full text-xs sm:text-sm p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>

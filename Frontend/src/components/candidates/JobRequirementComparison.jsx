@@ -3,7 +3,7 @@ import { Check, X, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
 export function JobRequirementComparison({ candidate, job }) {
-  const reqSkills = job?.requiredSkills || ['React', 'JavaScript', 'TypeScript', 'HTML', 'CSS'];
+  const reqSkills = job?.requiredSkills || [];
   const matchedSkills = candidate?.matchedSkills || [];
   const missingSkills = candidate?.missingSkills || [];
 
@@ -30,7 +30,7 @@ export function JobRequirementComparison({ candidate, job }) {
       type: 'Education',
       status: candidate?.education ? 'Matched' : 'Under Review',
       isMatched: Boolean(candidate?.education),
-      detail: candidate?.education?.degree || 'Verified degree',
+      detail: typeof candidate?.education === 'object' ? (candidate?.education?.degree || 'Verified degree') : (candidate?.education || 'Verified degree'),
     }
   ];
 

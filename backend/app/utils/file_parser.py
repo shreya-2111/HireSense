@@ -24,20 +24,21 @@ def get_ocr_engine():
     return _ocr_engine
 
 KNOWN_SKILLS_MAP = {
-    # Frontend
+    # Frontend & Typos
     "react": "React.js", "react.js": "React.js", "reactjs": "React.js", "react js": "React.js",
-    "javascript": "JavaScript", "js": "JavaScript",
-    "typescript": "TypeScript", "ts": "TypeScript",
+    "rectjs": "React.js", "resct.js": "React.js", "resctjs": "React.js", "reatjs": "React.js",
+    "javascript": "JavaScript", "js": "JavaScript", "javascrip": "JavaScript", "javascrit": "JavaScript",
+    "typescript": "TypeScript", "ts": "TypeScript", "typscript": "TypeScript", "typescrit": "TypeScript", "type script": "TypeScript",
     "html": "HTML5", "html5": "HTML5", "htmls": "HTML5",
     "css": "CSS3", "css3": "CSS3", "css5": "CSS3",
-    "tailwind": "Tailwind CSS", "tailwindcss": "Tailwind CSS",
+    "tailwind": "Tailwind CSS", "tailwindcss": "Tailwind CSS", "tailwind css": "Tailwind CSS",
     "bootstrap": "Bootstrap", "sass": "SASS", "scss": "SCSS",
     "redux": "Redux", "zustand": "Zustand", "next.js": "Next.js", "nextjs": "Next.js",
     "vue": "Vue.js", "vue.js": "Vue.js", "angular": "Angular",
     "flutter": "Flutter",
     
-    # Backend & Frameworks
-    "python": "Python", "fastapi": "FastAPI", "fast api": "FastAPI",
+    # Backend & Frameworks & Typos
+    "python": "Python", "pyhton": "Python", "fastapi": "FastAPI", "fast api": "FastAPI",
     "django": "Django", "flask": "Flask", "sqlalchemy": "SQLAlchemy",
     "node.js": "Node.js", "nodejs": "Node.js", "node js": "Node.js", "node": "Node.js",
     "express.js": "Express.js", "expressjs": "Express.js", "express js": "Express.js", "express": "Express.js",
@@ -45,20 +46,30 @@ KNOWN_SKILLS_MAP = {
     "java": "Java", "spring boot": "Spring Boot", "c++": "C++", "c#": "C#", ".net": ".NET",
     "golang": "Go", "go": "Go", "ruby": "Ruby", "rails": "Rails",
     
-    # Databases
+    # Databases & Typos
     "sql": "SQL", "mysql": "MySQL", "my5ql": "MySQL",
-    "postgresql": "PostgreSQL", "postgres": "PostgreSQL",
+    "postgresql": "PostgreSQL", "postgres": "PostgreSQL", "posgresql": "PostgreSQL", "postgre": "PostgreSQL",
     "mongodb": "MongoDB", "mongo08": "MongoDB", "mongo": "MongoDB",
     "redis": "Redis", "sqlite": "SQLite",
     
     # DevOps, Tools & Cloud
-    "docker": "Docker", "kubernetes": "Kubernetes", "k8s": "Kubernetes",
-    "aws": "AWS", "gcp": "GCP", "azure": "Azure", "ci/cd": "CI/CD",
+    "docker": "Docker", "doker": "Docker", "kubernetes": "Kubernetes", "k8s": "Kubernetes", "kubernets": "Kubernetes",
+    "aws": "AWS", "gcp": "GCP", "azure": "Azure", "ci/cd": "CI/CD", "cicd": "CI/CD",
     "git": "Git", "github": "GitHub", "gitlab": "GitLab",
     "linux": "Linux", "bash": "Bash",
     "postman": "Postman", "swagger": "Swagger", "rest api": "REST API", "rest apl": "REST API", "rest": "REST API",
+    "restful api": "REST API", "restful apis": "REST API",
     "vs code": "VS Code", "vscode": "VS Code", "android studio": "Android Studio",
     "figma": "Figma", "ui/ux": "UI/UX", "adobe xd": "Adobe XD", "photoshop": "Photoshop", "illustrator": "Illustrator",
+    
+    # Computer Science & OOP Concepts
+    "oop": "OOP Fundamentals", "oops": "OOP Fundamentals", "oop concept": "OOP Fundamentals",
+    "oop concepts": "OOP Fundamentals", "oop fundamentals": "OOP Fundamentals",
+    "object oriented programming": "OOP Fundamentals", "object oriented": "OOP Fundamentals",
+    "inheritance": "OOP Fundamentals", "polymorphism": "OOP Fundamentals",
+    "abstraction": "OOP Fundamentals", "encapsulation": "OOP Fundamentals",
+    "data structures": "Data Structures", "algorithms": "Algorithms",
+    "debugging": "Debugging", "problem solving": "Problem Solving",
     
     # Data & Testing
     "pandas": "Pandas", "numpy": "NumPy", "scikit-learn": "Scikit-Learn",
@@ -277,11 +288,14 @@ def extract_candidate_info_from_text(text: str, filename: str = "") -> Dict[str,
         clean_email_prefix = re.sub(r'[^a-zA-Z0-9]', '.', name.lower().strip()).strip('.')
         email = f"{clean_email_prefix or 'candidate'}@candidate.hiresense.local"
 
-    # 6. Skills extraction (scans for all known skills and OCR variations)
+    # 6. Skills extraction: exclude Summary/Profile/Objective section so summary text is not matched as skills
+    summary_strip_pattern = r'(?:professional\s*summary|summary|profile|about\s*me|objective)[:\s\n]+[\s\S]*?(?=(?:technical\s*skills|core\s*competencies|core\s*skills|skills|experience|work\s*experience|employment|education|projects|\Z))'
+    skills_text = re.sub(summary_strip_pattern, '', lowered_text, flags=re.IGNORECASE)
+
     extracted_skills = []
     for skill_key, canonical in KNOWN_SKILLS_MAP.items():
-        pattern = r'\b' + re.escape(skill_key) + r'\b'
-        if re.search(pattern, lowered_text):
+        pattern = r'(?<![a-zA-Z0-9_\-\#\+])' + re.escape(skill_key) + r'(?![a-zA-Z0-9_\-\#\+])'
+        if re.search(pattern, skills_text):
             if canonical not in extracted_skills:
                 extracted_skills.append(canonical)
 
@@ -415,3 +429,177 @@ def extract_candidate_info_from_text(text: str, filename: str = "") -> Dict[str,
         "summary": summary,
         "extracted_text": text
     }
+
+
+def extract_jd_info_from_text(text: str, filename: str = "") -> Dict[str, Any]:
+    """
+    Parse Job Description document/text to extract title, department, location,
+    employment type, experience level, salary range, description, and skills.
+    """
+    clean_text = (text or "").strip()
+    lowered_text = clean_text.lower()
+    lines = [l.strip() for l in clean_text.split('\n') if l.strip()]
+    
+    # 1. Title Extraction
+    title = ""
+    # Look for explicit headers
+    title_match = re.search(r'(?:job title|role|position|opening|job requisition|requisition)[:\s]+([^\n\r]+)', clean_text, flags=re.IGNORECASE)
+    if title_match:
+        cand_t = title_match.group(1).strip().strip('#*_- ')
+        if len(cand_t) >= 3 and len(cand_t) <= 70:
+            title = cand_t
+
+    if not title:
+        # Search for known job titles
+        known_titles = [
+            "Full Stack Developer", "Full Stack Engineer", "Frontend Developer", "Frontend Engineer",
+            "Backend Developer", "Backend Engineer", "Senior Software Engineer", "Software Engineer",
+            "Python Developer", "React Developer", "Node.js Developer", "Java Developer",
+            "DevOps Engineer", "Cloud Engineer", "Data Scientist", "Data Engineer", "Machine Learning Engineer",
+            "AI Engineer", "Product Manager", "UI/UX Designer", "Product Designer", "QA Automation Engineer"
+        ]
+        for kt in known_titles:
+            if re.search(r'\b' + re.escape(kt) + r'\b', clean_text, flags=re.IGNORECASE):
+                title = kt
+                break
+
+    if not title and lines:
+        # Use first line if reasonable length and not a generic heading
+        first_line = lines[0].strip('#*_- ')
+        if 4 <= len(first_line) <= 60 and not any(k in first_line.lower() for k in ["job description", "hiring", "company overview", "about us", "overview"]):
+            title = first_line
+
+    if not title and filename:
+        clean_file_title = os.path.splitext(filename)[0].replace('_', ' ').replace('-', ' ')
+        clean_file_title = re.sub(r'\b(jd|job|description|spec|req|final|v\d+)\b', '', clean_file_title, flags=re.IGNORECASE).strip()
+        title = clean_file_title.title() if len(clean_file_title) >= 3 else "Software Engineer"
+
+    if not title:
+        title = "Software Engineer"
+
+    # 2. Department Extraction
+    department = "Engineering"
+    if any(k in lowered_text for k in ["product design", "ui/ux", "ux designer", "figma", "visual design"]):
+        department = "Product Design"
+    elif any(k in lowered_text for k in ["data science", "data engineer", "machine learning", "data & ai", "ai/ml", "artificial intelligence", "nlp", "llm"]):
+        department = "Data & AI"
+    elif any(k in lowered_text for k in ["devops", "cloud infrastructure", "kubernetes", "sre", "platform engineer", "infrastructure"]):
+        department = "Infrastructure"
+    elif any(k in lowered_text for k in ["product manager", "product owner", "product management", "scrum master"]):
+        department = "Product Management"
+    elif any(k in lowered_text for k in ["hr", "human resources", "talent acquisition", "recruiter", "people ops", "people operations"]):
+        department = "People Operations"
+
+    # 3. Location Extraction
+    location = "Remote (India / Global)"
+    if "bengaluru" in lowered_text or "bangalore" in lowered_text:
+        location = "Bengaluru, Karnataka"
+    elif "pune" in lowered_text:
+        location = "Pune, Maharashtra"
+    elif "ahmedabad" in lowered_text or "gujarat" in lowered_text:
+        location = "Ahmedabad, Gujarat"
+    elif "mumbai" in lowered_text:
+        location = "Mumbai, Maharashtra"
+    elif "hyderabad" in lowered_text:
+        location = "Hyderabad, Telangana"
+    elif any(k in lowered_text for k in ["delhi", "noida", "gurugram", "gurgaon"]):
+        location = "Delhi NCR"
+
+    # 4. Employment / Job Type
+    employment_type = "Remote"
+    if "hybrid" in lowered_text:
+        employment_type = "Hybrid"
+    elif "work from home" in lowered_text or "wfh" in lowered_text:
+        employment_type = "Work from Home"
+    elif "work from office" in lowered_text or "on-site" in lowered_text or "onsite" in lowered_text:
+        employment_type = "Work from Office"
+    elif "remote" in lowered_text:
+        employment_type = "Remote"
+
+    # 5. Experience Level
+    experience_level = "Mid-Senior (3-5 yrs)"
+    exp_min, exp_max = 3, 5
+    exp_match = re.search(r'(\d+)\s*(?:-|to)\s*(\d+)\s*(?:years?|yrs?)', lowered_text)
+    exp_plus_match = re.search(r'(\d+)\+?\s*(?:years?|yrs?)(?:\s*(?:of\s*)?experience)?', lowered_text)
+
+    if exp_match:
+        exp_min = int(exp_match.group(1))
+        exp_max = int(exp_match.group(2))
+    elif exp_plus_match:
+        exp_min = int(exp_plus_match.group(1))
+        exp_max = exp_min + 3
+
+    if exp_min <= 2 and exp_max <= 2:
+        experience_level = "Entry-Level (0-2 yrs)"
+    elif exp_min <= 2 and exp_max <= 4:
+        experience_level = "Mid-Level (2-4 yrs)"
+    elif exp_min >= 7 or "staff" in lowered_text or "principal" in lowered_text or "lead" in lowered_text:
+        experience_level = "Staff / Lead (7+ yrs)"
+    elif exp_min >= 5 or "senior" in lowered_text or exp_max >= 8:
+        experience_level = "Senior (5+ yrs)"
+    else:
+        experience_level = "Mid-Senior (3-5 yrs)"
+
+    # 6. Salary Extraction
+    salary_range = "₹12,00,000 - ₹18,00,000 / year"
+    sal_match = re.search(r'((?:₹|INR|Rs\.?|\$)\s*[\d,]+(?:\.\d+)?\s*(?:-|to)\s*(?:₹|INR|Rs\.?|\$)?\s*[\d,]+(?:\.\d+)?\s*(?:lpa|per year|/year|p\.a\.|k)?)', clean_text, flags=re.IGNORECASE)
+    if sal_match:
+        salary_range = sal_match.group(1).strip()
+    else:
+        lpa_match = re.search(r'(\d+\s*[-–to]\s*\d+\s*LPA)', clean_text, flags=re.IGNORECASE)
+        if lpa_match:
+            salary_range = f"₹{lpa_match.group(1).strip()}"
+
+    # 7. Skills extraction: differentiate Required vs Nice-To-Have
+    required_skills = []
+    nice_to_have_skills = []
+
+    # Check for sections
+    sections = re.split(r'(?i)(?=requirements|required skills|must have|qualifications|nice to have|bonus points|good to have|preferred qualifications)', clean_text)
+    
+    req_text = clean_text
+    nice_text = ""
+    for sec in sections:
+        sec_low = sec.lower()
+        if any(k in sec_low[:30] for k in ["nice to have", "bonus points", "good to have", "preferred"]):
+            nice_text += " " + sec
+        elif any(k in sec_low[:30] for k in ["requirements", "required skills", "must have", "qualifications"]):
+            req_text += " " + sec
+
+    # Extract skills
+    all_detected_skills = []
+    for raw_skill, standard_name in KNOWN_SKILLS_MAP.items():
+        pattern = r'(?<![a-zA-Z0-9_\-\#\+])' + re.escape(raw_skill) + r'(?![a-zA-Z0-9_\-\#\+])'
+        if re.search(pattern, clean_text, flags=re.IGNORECASE):
+            if standard_name not in all_detected_skills:
+                all_detected_skills.append(standard_name)
+
+    for skill in all_detected_skills:
+        raw_alias = skill.lower()
+        if nice_text and (raw_alias in nice_text.lower() or any(k in nice_text.lower() for k, v in KNOWN_SKILLS_MAP.items() if v == skill)):
+            if skill not in nice_to_have_skills:
+                nice_to_have_skills.append(skill)
+        else:
+            if skill not in required_skills:
+                required_skills.append(skill)
+
+    # If all skills ended up in required and there are more than 5, partition some to nice-to-have if empty
+    if not nice_to_have_skills and len(required_skills) > 6:
+        nice_to_have_skills = required_skills[5:]
+        required_skills = required_skills[:5]
+
+    return {
+        "title": title,
+        "department": department,
+        "location": location,
+        "employment_type": employment_type,
+        "experience_level": experience_level,
+        "experience_min": exp_min,
+        "experience_max": exp_max,
+        "salary_range": salary_range,
+        "description": clean_text,
+        "required_skills": required_skills,
+        "nice_to_have_skills": nice_to_have_skills,
+        "file_name": filename
+    }
+

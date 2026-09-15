@@ -58,7 +58,7 @@ class LLMService:
                     data=json.dumps(body).encode("utf-8"),
                     headers=headers,
                     method="POST"
-                )
+                ) 
                 with urllib.request.urlopen(req, timeout=10) as response:
                     res_data = json.loads(response.read().decode("utf-8"))
                     content = res_data["choices"][0]["message"]["content"].strip()

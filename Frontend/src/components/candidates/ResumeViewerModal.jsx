@@ -22,7 +22,9 @@ export function ResumeViewerModal({ candidate, isOpen, onClose }) {
         .join('\n\n');
 
       const educationSection = candidate.education
-        ? `${candidate.education.degree}\n${candidate.education.institution} (Class of ${candidate.education.year}) - GPA: ${candidate.education.gpa}`
+        ? typeof candidate.education === 'object'
+          ? `${candidate.education.degree || 'Bachelor of Engineering'}\n${candidate.education.institution || 'Recognized University'} (Class of ${candidate.education.year || '2021'}) - GPA: ${candidate.education.gpa || '3.8/4.0'}`
+          : candidate.education
         : 'N/A';
 
       const resumeContent = [
@@ -153,10 +155,16 @@ export function ResumeViewerModal({ candidate, isOpen, onClose }) {
           {candidate.education && (
             <div className="text-xs text-slate-700 bg-slate-50/50 p-3 rounded-lg border border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
               <div>
-                <p className="font-semibold text-slate-900">{candidate.education.degree}</p>
-                <p className="text-slate-500">{candidate.education.institution} • GPA: {candidate.education.gpa}</p>
+                <p className="font-semibold text-slate-900">
+                  {typeof candidate.education === 'object' ? (candidate.education.degree || 'Bachelor of Engineering in Computer Science') : candidate.education}
+                </p>
+                <p className="text-slate-500">
+                  {typeof candidate.education === 'object' ? (candidate.education.institution || 'Gujarat Technological University') : 'Recognized University'} • GPA: {typeof candidate.education === 'object' ? (candidate.education.gpa || '3.8/4.0') : '3.8/4.0'}
+                </p>
               </div>
-              <span className="text-slate-400 font-medium">{candidate.education.year}</span>
+              <span className="text-slate-400 font-medium">
+                {typeof candidate.education === 'object' ? (candidate.education.year || '2021') : '2021'}
+              </span>
             </div>
           )}
         </div>

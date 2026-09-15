@@ -25,7 +25,7 @@ export function JobDetailsPage() {
   const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
   const [selectedCandToAttach, setSelectedCandToAttach] = useState('');
 
-  const job = jobs.find((j) => j.id === id) || jobs[0];
+  const job = jobs.find((j) => String(j.id) === String(id)) || jobs[0];
 
   if (!job) {
     return (
@@ -39,7 +39,7 @@ export function JobDetailsPage() {
 
   // Filter candidates attached to this job
   const jobCandidates = candidates.filter(
-    (c) => c.appliedJobId === job.id || c.appliedRole === job.title
+    (c) => String(c.appliedJobId) === String(job.id) || c.appliedRole === job.title
   );
 
   const handleToggleJobStatus = () => {

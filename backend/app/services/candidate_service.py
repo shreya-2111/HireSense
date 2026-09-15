@@ -25,6 +25,116 @@ class CandidateService:
                 skill = db.query(Skill).filter((Skill.normalized_name == norm) | (Skill.name == clean_name)).first()
         return skill
 
+    def _get_or_create_primary_app(
+        self, db: Session, candidate: Candidate, job_id: Optional[int] = None
+    ) -> Optional[Application]:
+        # 1. If job_id specified:
+        if job_id:
+            app = next((a for a in candidate.applications if a.job_id == job_id), None)
+            if not app:
+                job = db.query(Job).filter(Job.id == job_id).first()
+                if job:
+                    cand_skills = [cs.skill.name for cs in candidate.skills if cs.skill]
+                    job_skills = [js.skill.name for js in job.skills if js.skill]
+                    match_res = calculate_comprehensive_match(
+                        candidate_skills=cand_skills,
+                        required_skills=job_skills,
+                        candidate_exp_years=candidate.experience_years or 0,
+                        job_min_exp=job.experience_min,
+                        job_max_exp=job.experience_max,
+                        job_description=job.description or ""
+                    )
+                    app = Application(
+                        candidate_id=candidate.id,
+                        job_id=job.id,
+                        status="Applied",
+                        match_score=match_res["match_score"],
+                        recommendation=match_res["recommendation"]
+                    )
+                    db.add(app)
+                    db.flush()
+            elif app and (app.match_score is None or app.match_score == 0.0) and app.job:
+                cand_skills = [cs.skill.name for cs in candidate.skills if cs.skill]
+                job_skills = [js.skill.name for js in app.job.skills if js.skill]
+                match_res = calculate_comprehensive_match(
+                    candidate_skills=cand_skills,
+                    required_skills=job_skills,
+                    candidate_exp_years=candidate.experience_years or 0,
+                    job_min_exp=app.job.experience_min,
+                    job_max_exp=app.job.experience_max,
+                    job_description=app.job.description or ""
+                )
+                app.match_score = match_res["match_score"]
+                app.recommendation = match_res["recommendation"]
+                db.flush()
+            return app
+
+        # 2. If no job_id specified:
+        # Check existing applications
+        if candidate.applications:
+            # Check if any have match_score == 0 and recalculate
+            for a in candidate.applications:
+                if (a.match_score is None or a.match_score == 0.0) and a.job:
+                    cand_skills = [cs.skill.name for cs in candidate.skills if cs.skill]
+                    job_skills = [js.skill.name for js in a.job.skills if js.skill]
+                    m_res = calculate_comprehensive_match(
+                        candidate_skills=cand_skills,
+                        required_skills=job_skills,
+                        candidate_exp_years=candidate.experience_years or 0,
+                        job_min_exp=a.job.experience_min,
+                        job_max_exp=a.job.experience_max,
+                        job_description=a.job.description or ""
+                    )
+                    a.match_score = m_res["match_score"]
+                    a.recommendation = m_res["recommendation"]
+                    db.flush()
+            
+            primary_app = max(candidate.applications, key=lambda a: a.match_score or 0.0)
+            if primary_app and (primary_app.match_score or 0.0) > 0.0:
+                if candidate.current_role in [None, 'Applicant', 'Candidate', 'General Application'] and primary_app.job:
+                    candidate.current_role = primary_app.job.title
+                return primary_app
+
+        # If candidate has no applications or match_score is still 0, find best matching active job!
+        all_jobs = db.query(Job).all()
+        if not all_jobs:
+            return None
+
+        cand_skills = [cs.skill.name for cs in candidate.skills if cs.skill]
+        best_job = None
+        best_score = -1.0
+        best_res = None
+        for j in all_jobs:
+            j_skills = [js.skill.name for js in j.skills if js.skill]
+            m_res = calculate_comprehensive_match(
+                candidate_skills=cand_skills,
+                required_skills=j_skills,
+                candidate_exp_years=candidate.experience_years or 0,
+                job_min_exp=j.experience_min,
+                job_max_exp=j.experience_max,
+                job_description=j.description or ""
+            )
+            if m_res["match_score"] > best_score:
+                best_score = m_res["match_score"]
+                best_job = j
+                best_res = m_res
+
+        if best_job and best_res:
+            app = Application(
+                candidate_id=candidate.id,
+                job_id=best_job.id,
+                status="Applied",
+                match_score=best_res["match_score"],
+                recommendation=best_res["recommendation"]
+            )
+            db.add(app)
+            if candidate.current_role in [None, 'Applicant', 'Candidate', 'General Application']:
+                candidate.current_role = best_job.title
+            db.flush()
+            return app
+
+        return None
+
     def get_all_candidates(
         self,
         db: Session,
@@ -53,19 +163,20 @@ class CandidateService:
         results = []
 
         for c in candidates:
-            # Check applications (find job-specific or highest score application)
-            if job_id:
-                primary_app = next((a for a in c.applications if a.job_id == job_id), None)
-                if not primary_app:
-                    continue
-            else:
-                primary_app = max(c.applications, key=lambda a: a.match_score or 0.0) if c.applications else None
+            # Ensure primary application with real computed match score
+            primary_app = self._get_or_create_primary_app(db, c, job_id=job_id)
+
+            if job_id and not primary_app:
+                continue
 
             # Filter by status if requested
             if status and (not primary_app or primary_app.status != status):
                 continue
 
-            skills = [cs.skill.name for cs in c.skills if cs.skill]
+            # Filter out invalid placeholders like 'string'
+            raw_skills = [cs.skill.name for cs in c.skills if cs.skill]
+            skills = list(dict.fromkeys([s for s in raw_skills if s and s.strip().lower() != 'string']))
+
             resume_name = c.resumes[0].file_name if c.resumes else None
             resume_id = c.resumes[0].id if c.resumes else None
 
@@ -93,6 +204,7 @@ class CandidateService:
                 "updated_at": c.updated_at
             })
 
+        db.commit()
         return results
 
     def get_candidate_by_id(self, db: Session, candidate_id: int) -> Optional[Dict[str, Any]]:
@@ -100,10 +212,13 @@ class CandidateService:
         if not c:
             return None
 
-        primary_app = max(c.applications, key=lambda a: a.match_score or 0.0) if c.applications else None
-        skills = [cs.skill.name for cs in c.skills if cs.skill]
+        primary_app = self._get_or_create_primary_app(db, c)
+        raw_skills = [cs.skill.name for cs in c.skills if cs.skill]
+        skills = list(dict.fromkeys([s for s in raw_skills if s and s.strip().lower() != 'string']))
         resume_name = c.resumes[0].file_name if c.resumes else None
         resume_id = c.resumes[0].id if c.resumes else None
+
+        db.commit()
 
         return {
             "id": c.id,
@@ -150,7 +265,7 @@ class CandidateService:
                 candidate.education = cand_in.education
             if cand_in.current_company:
                 candidate.current_company = cand_in.current_company
-            if cand_in.current_role and cand_in.current_role != 'Applicant':
+            if cand_in.current_role and cand_in.current_role not in ['Applicant', 'Candidate', 'string']:
                 candidate.current_role = cand_in.current_role
             if cand_in.summary:
                 candidate.summary = cand_in.summary
@@ -163,19 +278,20 @@ class CandidateService:
                 experience_years=cand_in.experience_years or 0,
                 education=cand_in.education,
                 current_company=cand_in.current_company,
-                current_role=cand_in.current_role,
+                current_role=cand_in.current_role if cand_in.current_role != 'string' else None,
                 summary=cand_in.summary
             )
             db.add(candidate)
             db.flush()
 
         if cand_in.skills:
+            cleaned_skills = [s.strip() for s in cand_in.skills if s and s.strip().lower() != 'string']
             # Clear old manual skills if re-attaching
             db.query(CandidateSkill).filter(
                 CandidateSkill.candidate_id == candidate.id,
                 CandidateSkill.source == "manual"
             ).delete()
-            for s_name in cand_in.skills:
+            for s_name in cleaned_skills:
                 skill = self._get_or_create_skill(db, s_name)
                 cand_skill = db.query(CandidateSkill).filter(
                     CandidateSkill.candidate_id == candidate.id,
@@ -184,44 +300,10 @@ class CandidateService:
                 if not cand_skill:
                     cand_skill = CandidateSkill(candidate_id=candidate.id, skill_id=skill.id, proficiency="intermediate", source="manual")
                     db.add(cand_skill)
+            db.flush()
 
-        # Attach to job if specified
-        if cand_in.job_id:
-            job = db.query(Job).filter(Job.id == cand_in.job_id).first()
-            if job:
-                # Update candidate role to job title if current_role was generic
-                if candidate.current_role in [None, 'Applicant', 'Candidate']:
-                    candidate.current_role = job.title
-
-                # Compute match score
-                job_skills = [js.skill.name for js in job.skills if js.skill]
-                match_res = calculate_comprehensive_match(
-                    candidate_skills=cand_in.skills or [],
-                    required_skills=job_skills,
-                    candidate_exp_years=cand_in.experience_years or 0,
-                    job_min_exp=job.experience_min,
-                    job_max_exp=job.experience_max,
-                    job_description=job.description or ""
-                )
-
-                # Check if application already exists
-                existing_app = db.query(Application).filter(
-                    Application.candidate_id == candidate.id,
-                    Application.job_id == job.id
-                ).first()
-
-                if existing_app:
-                    existing_app.match_score = cand_in.match_score or match_res["match_score"]
-                    existing_app.recommendation = match_res["recommendation"]
-                else:
-                    app = Application(
-                        candidate_id=candidate.id,
-                        job_id=job.id,
-                        status="Applied",
-                        match_score=cand_in.match_score or match_res["match_score"],
-                        recommendation=match_res["recommendation"]
-                    )
-                    db.add(app)
+        # Compute match score and attach/create application
+        self._get_or_create_primary_app(db, candidate, job_id=cand_in.job_id)
 
         db.commit()
         db.refresh(candidate)

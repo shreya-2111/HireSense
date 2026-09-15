@@ -341,4 +341,78 @@ Return JSON only in this exact format:
                 db.add(record)
         db.commit()
 
+    def parse_job_description(self, jd_text: str, filename: str = "") -> Dict[str, Any]:
+        """
+        Extract structured Job Requisition fields from JD text using Gemini AI with robust rule-based fallback.
+        """
+        from app.utils.file_parser import extract_jd_info_from_text
+        
+        fallback_data = extract_jd_info_from_text(jd_text, filename)
+        if not self.is_available():
+            return fallback_data
+
+        try:
+            client = self._get_client()
+            if not client:
+                return fallback_data
+
+            prompt = f"""
+You are an expert technical recruiter and ATS specialist. Extract structured job requisition information from the provided Job Description text.
+
+JOB DESCRIPTION TEXT:
+{jd_text[:4000]}
+
+FILENAME: {filename}
+
+Return a valid JSON object ONLY with the following keys and exact structure:
+{{
+  "title": "Clear concise job title (e.g. Senior Frontend Engineer)",
+  "department": "One of: Engineering, Product Design, Data & AI, Infrastructure, Product Management, People Operations",
+  "location": "One of: Bengaluru, Karnataka | Pune, Maharashtra | Ahmedabad, Gujarat | Mumbai, Maharashtra | Hyderabad, Telangana | Delhi NCR | Remote (India / Global)",
+  "employment_type": "One of: Remote | Work from Home | Work from Office | Hybrid",
+  "experience_level": "One of: Entry-Level (0-2 yrs) | Mid-Level (2-4 yrs) | Mid-Senior (3-5 yrs) | Senior (5+ yrs) | Staff / Lead (7+ yrs)",
+  "experience_min": integer minimum years,
+  "experience_max": integer maximum years,
+  "salary_range": "e.g. ₹12,00,000 - ₹18,00,000 / year or detected salary",
+  "description": "Clean, structured overview and responsibilities text extracted from the JD",
+  "required_skills": ["List", "of", "must-have", "technical", "skills"],
+  "nice_to_have_skills": ["List", "of", "nice-to-have", "bonus", "skills"]
+}}
+"""
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+
+            if response and response.text:
+                json_text = response.text.strip()
+                if json_text.startswith("```json"):
+                    json_text = json_text[7:]
+                elif json_text.startswith("```"):
+                    json_text = json_text[3:]
+                if json_text.endswith("```"):
+                    json_text = json_text[:-3]
+                parsed = json.loads(json_text.strip())
+
+                # Validate and merge with fallback
+                return {
+                    "title": parsed.get("title") or fallback_data["title"],
+                    "department": parsed.get("department") or fallback_data["department"],
+                    "location": parsed.get("location") or fallback_data["location"],
+                    "employment_type": parsed.get("employment_type") or fallback_data["employment_type"],
+                    "experience_level": parsed.get("experience_level") or fallback_data["experience_level"],
+                    "experience_min": parsed.get("experience_min", fallback_data["experience_min"]),
+                    "experience_max": parsed.get("experience_max", fallback_data["experience_max"]),
+                    "salary_range": parsed.get("salary_range") or fallback_data["salary_range"],
+                    "description": jd_text.strip() if (jd_text and jd_text.strip()) else (fallback_data.get("description") or ""),
+                    "required_skills": parsed.get("required_skills") if isinstance(parsed.get("required_skills"), list) and parsed.get("required_skills") else fallback_data["required_skills"],
+                    "nice_to_have_skills": parsed.get("nice_to_have_skills") if isinstance(parsed.get("nice_to_have_skills"), list) else fallback_data["nice_to_have_skills"],
+                    "file_name": filename
+                }
+        except Exception as e:
+            logger.warning(f"Gemini JD parsing failed: {e}. Using rule-based fallback.")
+
+        return fallback_data
+
 gemini_service = GeminiService()
+ 

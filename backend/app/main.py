@@ -58,12 +58,12 @@ def on_startup():
     init_db()
     logger.info("Database initialized successfully.")
     print("\n" + "="*60)
-    print("🚀 HIRESENSE LIVE SERVERS READY")
+    print("[HIRESENSE] LIVE SERVERS READY")
     print("="*60)
-    print("📱 Frontend Web App:     http://localhost:5173")
-    print("🔌 Backend API:          http://localhost:8000")
-    print("📖 Swagger API Docs:     http://localhost:8000/docs")
-    print("📄 ReDoc API Docs:       http://localhost:8000/redoc")
+    print("Frontend Web App:     http://localhost:5173")
+    print("Backend API:          http://localhost:8000")
+    print("Swagger API Docs:     http://localhost:8000/docs")
+    print("ReDoc API Docs:       http://localhost:8000/redoc")
     print("="*60 + "\n")
 
 

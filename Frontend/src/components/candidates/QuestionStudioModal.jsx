@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Copy,
   Check,
@@ -22,51 +22,46 @@ export function QuestionStudioModal({ candidate, job, isOpen, onClose }) {
   const [questionCount, setQuestionCount] = useState('5');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [questions, setQuestions] = useState(
-    candidate?.interviewQuestions?.map((q, idx) => ({
-      id: q.id || `q-${idx}`,
-      question: q.question,
-      rationale: q.rationale || 'Targeted interview probe',
-      type: 'Technical',
-      isEditing: false,
-    })) || [
-      {
-        id: 'q-1',
-        question: 'How would you optimize the performance of a large React application experiencing rendering bottlenecks?',
-        rationale: 'Validates React performance profiling and virtualized lists.',
-        type: 'Technical',
-        isEditing: false
-      },
-      {
-        id: 'q-2',
-        question: 'Explain the difference between useMemo and useCallback, and when excessive use can degrade performance.',
-        rationale: 'Evaluates memory management and hook mechanics.',
-        type: 'Technical',
-        isEditing: false
-      },
-      {
-        id: 'q-3',
-        question: 'Describe a challenging frontend state management problem you solved in production.',
-        rationale: 'Probes real-world architectural problem solving.',
-        type: 'Experience',
-        isEditing: false
-      },
-      {
-        id: 'q-4',
-        question: 'How would you structure a scalable component hierarchy and manage cross-component state?',
-        rationale: 'Assesses component architecture maturity.',
-        type: 'Technical',
-        isEditing: false
-      },
-      {
-        id: 'q-5',
-        question: 'How do you test critical UI interactions without over-relying on fragile snapshot tests?',
-        rationale: 'Evaluates testing strategy and quality mindset.',
-        type: 'Technical',
-        isEditing: false
-      }
-    ]
-  );
+  const [questions, setQuestions] = useState([]);
+
+  useEffect(() => {
+    if (candidate?.interviewQuestions?.length > 0) {
+      setQuestions(
+        candidate.interviewQuestions.map((q, idx) => ({
+          id: q.id || `q-${idx}`,
+          question: q.question,
+          rationale: q.rationale || 'Targeted interview probe',
+          type: q.type || 'Technical',
+          isEditing: false,
+        }))
+      );
+    } else if (candidate) {
+      const fallbackSkill = candidate?.matchedSkills?.[0] || 'Modern Web Architecture';
+      setQuestions([
+        {
+          id: `q-${candidate.id}-1`,
+          question: `How have you utilized ${fallbackSkill} in large-scale applications to optimize rendering and state management?`,
+          rationale: `Probes practical hands-on proficiency with ${fallbackSkill}.`,
+          type: 'Technical',
+          isEditing: false
+        },
+        {
+          id: `q-${candidate.id}-2`,
+          question: `Explain your approach to designing resilient APIs and handling asynchronous data streams under high load.`,
+          rationale: `Evaluates architecture and production reliability skills.`,
+          type: 'Technical',
+          isEditing: false
+        },
+        {
+          id: `q-${candidate.id}-3`,
+          question: `Describe a scenario where you resolved complex performance bottlenecks in a production deployment.`,
+          rationale: `Assesses troubleshooting maturity and root-cause analysis.`,
+          type: 'Experience',
+          isEditing: false
+        }
+      ]);
+    }
+  }, [candidate, isOpen]);
 
   const [copiedId, setCopiedId] = useState(null);
   const [newQuestionText, setNewQuestionText] = useState('');

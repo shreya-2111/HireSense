@@ -16,10 +16,22 @@ export const resumeService = {
       const uploadRes = await this.uploadResume(file);
       
       const jobId = targetJob?.id ? parseInt(targetJob.id, 10) : 1;
+      const targetSkills = targetJob?.requiredSkills || targetJob?.skills || [];
+      const extractedTargetSkills = Array.isArray(targetSkills) 
+        ? targetSkills.map(s => typeof s === 'string' ? s : s.name).filter(Boolean)
+        : [];
+      if (Array.isArray(targetJob?.niceToHaveSkills)) {
+        targetJob.niceToHaveSkills.forEach(s => {
+          const name = typeof s === 'string' ? s : s.name;
+          if (name && !extractedTargetSkills.includes(name)) extractedTargetSkills.push(name);
+        });
+      }
+
       const analysisRes = await apiClient.post('/analyze-resume', {
         resume_id: uploadRes.resume_id,
         candidate_id: uploadRes.candidate_id,
         job_id: jobId,
+        required_skills: extractedTargetSkills.length > 0 ? extractedTargetSkills : undefined,
       });
 
       return {

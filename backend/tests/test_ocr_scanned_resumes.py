@@ -21,17 +21,10 @@ def setup_frontend_job():
         "experience_min": 2,
         "experience_max": 8,
         "description": "Seeking a passionate Frontend Developer with React, JavaScript, HTML, CSS, and Node.js experience to build high quality responsive web applications.",
-        "skills": [
-            {"name": "React", "importance": "required"},
-            {"name": "JavaScript", "importance": "required"},
-            {"name": "HTML", "importance": "required"},
-            {"name": "CSS", "importance": "required"},
-            {"name": "Node.js", "importance": "required"},
-            {"name": "TypeScript", "importance": "required"}
-        ]
+        "skills": ["React", "JavaScript", "HTML", "CSS", "Node.js", "TypeScript"]
     }
     res = client.post("/api/v1/jobs", json=job_payload)
-    if res.status_code == 201:
+    if res.status_code in [200, 201]:
         return res.json()["id"]
     
     list_res = client.get("/api/v1/jobs")
